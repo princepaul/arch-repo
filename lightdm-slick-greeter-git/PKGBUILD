@@ -3,7 +3,7 @@
 # Contributor: Sam Burgos <santiago.burgos1089@gmail.com>
 
 _pkgname=lightdm-slick-greeter
-pkgname=${_pkgname}-git
+pkgname=${_pkgname}
 pkgver=2.2.7.r0.g47e23e8
 pkgrel=1
 pkgdesc='A slick-looking LightDM greeter – git'
