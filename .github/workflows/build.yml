@@ -104,12 +104,14 @@ jobs:
       - name: Commit updated .upstream refs
         if: always()
         run: |
-            sudo -u builder -H git -C "$GITHUB_WORKSPACE" config user.name "github-actions[bot]"
-            sudo -u builder -H git -C "$GITHUB_WORKSPACE" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            if [[ -n "$(sudo -u builder -H git -C "$GITHUB_WORKSPACE" status --porcelain -- .upstream)" ]]; then
-                sudo -u builder -H git -C "$GITHUB_WORKSPACE" add .upstream
-                sudo -u builder -H git -C "$GITHUB_WORKSPACE" commit -m "chore: update upstream refs [skip ci]"
-                sudo -u builder -H git -C "$GITHUB_WORKSPACE" push
+            test "$(sudo -u builder -H git rev-parse --show-toplevel)" = "$PWD" || {
+                echo "ERROR: cwd is not the workspace top-level: $(pwd)" >&2; exit 1; }
+            sudo -u builder -H git config user.name "github-actions[bot]"
+            sudo -u builder -H git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            if [[ -n "$(sudo -u builder -H git status --porcelain -- .upstream)" ]]; then
+                sudo -u builder -H git add .upstream
+                sudo -u builder -H git commit -m "chore: update upstream refs [skip ci]"
+                sudo -u builder -H git push
             else
                 echo "No upstream ref changes to commit."
             fi
