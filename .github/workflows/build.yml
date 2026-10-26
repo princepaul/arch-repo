@@ -43,14 +43,19 @@ jobs:
     container:
       image: archlinux:base-devel
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Prepare container (build user, deps)
+      # git MUST exist before actions/checkout, otherwise checkout falls back
+      # to a REST tarball download WITHOUT .git and the later .upstream ref
+      # commits find no git repository.
+      - name: Prepare container (git first, build user, deps)
         run: |
             pacman -Syu --noconfirm git sudo github-cli zstd
             useradd -m builder
             echo 'builder ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/builder
-            chown -R builder:builder .
+
+      - uses: actions/checkout@v4
+
+      - name: Hand the workspace to builder
+        run: chown -R builder:builder .
 
       - name: Build + install AUR-only dependency shims
         run: |
@@ -63,9 +68,17 @@ jobs:
             shopt -u nullglob
             if [[ ${#pks[@]} -eq 0 ]]; then
                 echo "No dependency shims configured."
-                exit 0
+            else
+                sudo pacman -U --noconfirm "${pks[@]}"
             fi
-            sudo pacman -U --noconfirm "${pks[@]}"
+
+            # pysassc (AUR python-libsass frontend) - used by mint-themes /
+            # mint-y-icons upstream scripts to regenerate theme CSS from scss.
+            python -m venv /opt/pysassc
+            /opt/pysassc/bin/pip install --quiet libsass
+            ln -sf /opt/pysassc/bin/pysassc /usr/local/bin/pysassc
+            /usr/local/bin/pysassc --version || {
+                echo "ERROR: pysassc fixture failed to install" >&2; exit 1; }
 
       - name: Build changed packages + dependents
         env:

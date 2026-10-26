@@ -27,7 +27,8 @@ done
 # Absolute DIST_DIR so later cd's cannot break it; DIST_DIR is relative to cwd
 DIST_DIR_ABS="$(cd "$DIST_DIR" && pwd)"
 shopt -s nullglob
-pkgs=("$DIST_DIR"/*.pkg.tar.zst)
+# absolute paths: the script cd's into the clone later, relative paths would break
+pkgs=("$DIST_DIR_ABS"/*.pkg.tar.zst)
 shopt -u nullglob
 [[ ${#pkgs[@]} -gt 0 ]] || { echo "ERROR: No packages in $DIST_DIR; refusing to publish (empty build?)" >&2; exit 1; }
 
@@ -62,8 +63,9 @@ fi
 # ---- 2. Replace superseded versions of the built pkgbases ----
 declare -A bases_seen=()
 for pkg in "${pkgs[@]}"; do
-    base="$(bsdtar -xOf "$pkg" .PKGINFO 2>/dev/null | awk '$1 == "pkgbase" {print $3}')"
-    [[ -n "$base" ]] || { echo "Could not read pkgbase from $pkg" >&2; exit 1; }
+    base="$(bsdtar -xOf "$pkg" .PKGINFO | awk '$1 == "pkgbase" {print $3}')" || {
+        echo "ERROR: bsdtar -xOf failed on $pkg (is bsdtar installed?)" >&2; exit 1; }
+    [[ -n "$base" ]] || { echo "ERROR: could not read pkgbase from $pkg" >&2; exit 1; }
     bases_seen["$base"]=1
 done
 for base in "${!bases_seen[@]}"; do
