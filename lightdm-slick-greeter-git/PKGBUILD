@@ -1,0 +1,52 @@
+# Maintainer: Alexander Epaneshnikov <alex19ep@archlinux.org>
+# Maintainer: Caleb Maclennan <caleb@alerque.com>
+# Contributor: Sam Burgos <santiago.burgos1089@gmail.com>
+
+_pkgname=lightdm-slick-greeter
+pkgname=${_pkgname}-git
+pkgver=2.2.7.r0.g47e23e8
+pkgrel=1
+pkgdesc='A slick-looking LightDM greeter – git'
+arch=('x86_64')
+url="https://github.com/linuxmint/slick-greeter"
+license=('GPL-3.0-only')
+options=('!debug')
+provides=("${_pkgname}" 'slick-greeter')
+conflicts=("${_pkgname}" 'slick-greeter')
+depends=('cairo' 'freetype2' 'gtk3' 'libcanberra' 'libxext' 'lightdm' 'pixman'
+         'python' 'xapp')
+optdepends=('numlockx: enable numerical keypad on supported keyboard')
+makedepends=('git' 'meson' 'vala')
+
+source=("git+${url}.git")
+sha256sums=('SKIP')
+
+pkgver() {
+  cd slick-greeter
+  git describe --long --tags \
+    | sed 's/^v//;s/\([^-]*-g\)/r\1/;s/-/./g'
+}
+
+prepare() {
+  cd slick-greeter
+  rm -rf build
+}
+
+build() {
+  cd slick-greeter
+  arch-meson . build
+  meson compile -C build
+}
+
+check() {
+  cd slick-greeter
+  meson test -C build
+}
+
+package() {
+  cd slick-greeter
+  meson install -C build --destdir "$pkgdir"
+  # adjust launcher name
+  mv "$pkgdir/usr/share/xgreeters/slick-greeter.desktop" \
+     "$pkgdir/usr/share/xgreeters/lightdm-slick-greeter.desktop"
+}

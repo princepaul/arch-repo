@@ -26,8 +26,8 @@ mint-themes-git
 pix-git
 xreader-git
 hypnotix-git
-# lightdm-settings-git
-# lightdm-slick-greeter-git
+lightdm-slick-greeter-git
+lightdm-settings-git
 pdfarranger-git
 timeshift-git
 webapp-manager-git
