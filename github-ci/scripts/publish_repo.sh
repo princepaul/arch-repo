@@ -109,6 +109,72 @@ cp -f "$REPO_NAME.db.tar.gz" "$REPO_NAME.files.tar.gz" "$DIST_DIR_ABS/"
 
 rm -f "$REPO_NAME.db.tar.gz.old" "$REPO_NAME.files.tar.gz.old"
 
+# ---- 4b. Generate index.html (human-readable repo landing page) ----
+rows_tmp="$(mktemp)"
+for pkgfile in ./*.pkg.tar.zst; do
+    bsdtar -xOf "$pkgfile" .PKGINFO \
+        | awk -F' = ' '
+            $1=="pkgname"    {name=$2}
+            $1=="pkgver"     {ver=$2}
+            $1=="pkgdesc"    {desc=$2}
+            $1=="pkgbase"    {base=$2}
+            END {
+                printf "%s\t%s\t%s\n",
+                    name, ver, (desc=="" ? (base=="" ? name : base) : desc)
+            }' \
+        >> "$rows_tmp"
+done
+sort -u "$rows_tmp" -o "$rows_tmp"
+
+{
+    printf '%s\n' \
+        '<!DOCTYPE html>' \
+        '<html lang="en"><head><meta charset="utf-8">' \
+        '<meta name="viewport" content="width=device-width, initial-scale=1">' \
+        '<title>[prince] pacman repository</title>' \
+        '<style>' \
+        'body{font-family:ui-monospace,Menlo,Consolas,monospace;max-width:960px;margin:2rem auto;padding:0 1rem;color:#1b1f24;background:#f6f8fa}' \
+        'h1{font-size:1.3rem}h1 code{background:#dbe5f2;padding:.2em .4em;border-radius:4px}' \
+        'code,pre{background:#eff2f5;border-radius:4px;padding:.15em .35em}' \
+        'pre{padding:1em;overflow-x:auto;line-height:1.45}' \
+        'table{border-collapse:collapse;width:100%;background:#fff;font-size:.9rem}' \
+        'th,td{border:1px solid #d0d7de;padding:.35rem .6rem;text-align:left}' \
+        'th{background:#dbe5f2}td:nth-child(2){white-space:nowrap}' \
+        'footer{margin-top:1.5rem;color:#57606a;font-size:.8rem}' \
+        '</style></head><body>' \
+        '<h1>Arch user repository <code>[prince]</code></h1>' \
+        '<p>Personal pacman repository (git/AUR-style builds of the Cinnamon stack and friends), served via GitHub Pages.</p>' \
+        '<h2>Usage</h2>' \
+        '<p>Add the following to <code>/etc/pacman.conf</code>:</p>' \
+        '<pre>[prince]' \
+        'SigLevel = Never' \
+        'Server = https://princepaul.github.io/arch-repo/</pre>' \
+        '<p>Then run <code>pacman -Syu</code> and install packages as usual.</p>' \
+        '<h2>Packages</h2>'
+    } > index.html
+
+awk -F'\t' '
+    BEGIN {
+        print "<table><tr><th>#</th><th>Package</th><th>Version</th><th>Description</th></tr>"
+        n=0
+    }
+    {
+        n++
+        printf "<tr><td>%d</td><td>%s</td><td>%s</td><td>%s</td></tr>\n", n, $1, $2, $3
+    }
+    END {
+        print "</table>"
+        printf "<footer>Generated %s UTC &middot; %d packages &middot; repository db: <a href=\"prince.db\">prince.db</a></footer>\n", strftime("%Y-%m-%d %H:%M"), n
+    }' "$rows_tmp" >> index.html
+
+if grep -q '<table>' index.html && grep -q '</table>' index.html; then
+    echo "index.html generated: $(grep -c '<tr>' index.html) rows"
+else
+    echo "ERROR: index.html generation failed" >&2
+    exit 1
+fi
+rm -f "$rows_tmp"
+
 # ---- 5. Commit and push ----
 git add -A .
 if [[ -z "$(git status --porcelain)" ]]; then
