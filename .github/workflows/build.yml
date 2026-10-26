@@ -1,0 +1,96 @@
+name: build-packages
+
+on:
+  schedule:
+    # Every 6 hours (offset to avoid the busy top-of-hour GitHub window)
+    - cron: "23 */6 * * *"
+  workflow_dispatch:
+    inputs:
+      package:
+        description: "Package dir to build (+ its dependents), e.g. nemo-git. Empty = check upstream for changes."
+        required: false
+        default: ""
+      force_all:
+        description: "Build everything in build-order regardless of upstream changes"
+        required: false
+        default: "false"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-packages
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      has_changes: ${{ steps.check.outputs.has_changes }}
+      packages: ${{ steps.check.outputs.packages }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: check
+        env:
+          FORCE_ALL: ${{ inputs.force_all || 'false' }}
+          SINGLE_PACKAGE: ${{ inputs.package || '' }}
+        run: bash github-ci/scripts/check_upstream.sh
+
+  build:
+    needs: check
+    if: needs.check.outputs.has_changes == 'true'
+    runs-on: ubuntu-latest
+    container:
+      image: archlinux:base-devel
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare container (build user, deps)
+        run: |
+            pacman -Syu --noconfirm git sudo github-cli zstd
+            useradd -m builder
+            echo 'builder ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/builder
+            chown -R builder:builder .
+
+      - name: Build changed packages + dependents
+        env:
+          PKGS: ${{ needs.check.outputs.packages }}
+        run: sudo -u builder bash github-ci/scripts/build_ci.sh
+
+      - name: Upload artifacts (also kept as run artifacts)
+        uses: actions/upload-artifact@v4
+        with:
+          name: packages
+          path: dist/*.pkg.tar.zst
+          if-no-files-found: ignore
+
+      - name: Publish pacman repo to 'packages' branch (Pages)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: bash github-ci/scripts/publish_repo.sh
+
+      - name: Publish to rolling 'latest' release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+            cd dist
+            if ! compgen -G '*.pkg.tar.zst' >/dev/null; then
+                echo "No packages built; nothing to publish."
+                exit 0
+            fi
+            gh release view latest >/dev/null 2>&1 || gh release create latest --title "Latest packages" --notes "Rolling release of locally built packages (git versions). Overwritten on every successful build. The authoritative pacman repo is the 'packages' branch / GitHub Pages."
+            gh release upload latest ./*.pkg.tar.zst ./prince.db.tar.gz ./prince.files.tar.gz ./SHA256SUMS --clobber
+
+      - name: Commit updated .upstream refs
+        run: |
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            if [[ -n "$(git status --porcelain .upstream)" ]]; then
+                git add .upstream
+                git commit -m "chore: update upstream refs [skip ci]"
+                git push
+            else
+                echo "No upstream ref changes to commit."
+            fi

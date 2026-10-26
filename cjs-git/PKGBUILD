@@ -1,0 +1,63 @@
+# Maintainer: Eli Schwartz <eschwartz@archlinux.org>
+# Contributor: Alexandre Filgueira <alexfilgueira@cinnarch.com>
+# Contributor: Ionut Biru <ibiru@archlinux.org>
+
+pkgname=cjs
+pkgver=140.1.r1.g84e7840c
+pkgrel=1
+pkgdesc='JavaScript bindings for Cinnamon'
+arch=(x86_64)
+url='https://github.com/linuxmint/cjs'
+license=(LGPL-2.0-or-later)
+depends=(
+  cairo
+  gcc-libs
+  glib2
+  glibc
+  gobject-introspection-runtime
+  js140
+  libffi
+  libgirepository
+  libx11
+  readline
+)
+makedepends=(
+  dbus
+  git
+  gobject-introspection
+  meson
+)
+checkdepends=(
+  gtk3
+  xorg-server-xvfb
+)
+source=(git+${url}.git)
+b2sums=('SKIP')
+options=(
+  '!debug'
+)
+
+
+pkgver() {
+    cd "${srcdir}"/${pkgname}
+    git describe --long | sed 's/\([^-]*-g\)/r\1/;s/-/./g'
+}
+
+build() {
+  arch-meson $pkgname build \
+    -D installed_tests=false
+  meson compile -C build
+}
+
+check() {
+  dbus-run-session xvfb-run -s '-nolisten local' \
+    meson test -C build --print-errorlogs
+}
+
+package() {
+  meson install -C build --destdir "$pkgdir"
+
+  # cjs doesn't properly disable installs from gobject-introspection-tests
+  rm -r "$pkgdir/usr/lib/installed-tests"
+}
+

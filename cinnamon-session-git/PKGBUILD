@@ -1,0 +1,59 @@
+# Maintainer: Eli Schwartz <eschwartz@archlinux.org>
+# Contributor: Alexandre Filgueira <alexfilgueira@antergos.com>
+# Contributor: Jan Alexander Steffens (heftig) <jan.steffens@gmail.com>
+# Contributor: Prince Paul <prince.paul.k@gmail.com>
+
+pkgname=cinnamon-session
+pkgver=6.7.6.unstable.r3.g2f256e0
+pkgrel=1
+pkgdesc="The Cinnamon Session Handler"
+arch=('x86_64')
+url="https://github.com/linuxmint/${pkgname}"
+license=(GPL-2.0-or-later)
+depends=(
+  bash
+  cinnamon-desktop
+  dconf
+  gcc-libs
+  glib2
+  glibc
+  gtk3
+  hicolor-icon-theme
+  libcanberra
+  libglvnd
+  libice
+  libsm
+  libx11
+  libxau
+  libxcomposite
+  python
+  python-gobject
+  python-setproctitle
+  systemd-libs
+  xapp
+)
+optdepends=('cinnamon-translations: i18n')
+makedepends=(
+  git
+  glib2-devel
+  meson
+  xtrans
+)
+source=(git+${url}.git)
+b2sums=('SKIP')
+options=('!emptydirs' '!debug')
+
+pkgver() {
+    cd "${srcdir}"/${pkgname}
+    git describe --long | sed 's/\([^-]*-g\)/r\1/;s/-/./g'
+}
+
+build() {
+  arch-meson $pkgname build \
+    --libexecdir=lib/$pkgname
+  meson compile -C build
+}
+
+package() {
+  meson install -C build --destdir="$pkgdir"
+}

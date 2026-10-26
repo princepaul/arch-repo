@@ -1,0 +1,12 @@
+# Build leftovers (README covers why these never land in git)
+src/
+pkg/
+*.pkg.tar.zst
+*.pkg.tar.zst.old
+*.pkg.tar.xz
+*.old
+dist/
+old_versions/
+# per-clone scratch
+*.tar.gz
+!.nojekyll

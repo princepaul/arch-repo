@@ -1,0 +1,75 @@
+# Maintainer: Nate Simon <njsimon10@gmail.com>
+
+pkgname=pix
+pkgver=3.4.11.r0.gf9688e7
+pkgrel=1
+pkgdesc="Image viewer and browser based on gthumb. X-Apps Project."
+arch=('i686' 'x86_64' 'armv7h')
+license=('GPL')
+depends=(
+    'desktop-file-utils'
+    'librsvg'
+    'gst-plugins-base-libs'
+    'gsettings-desktop-schemas'
+    'libwebp'
+    'xapp'
+)
+makedepends=(
+    'meson'
+    'intltool'
+    'itstool'
+    'liboauth'
+    'exiv2'
+    'glib2-devel'
+)
+optdepends=(
+    'gstreamer: Video support'
+    'gst-plugin-gtk: Video support'
+    'gst-libav: Video support'
+    'exiv2: Embedded metadata support'
+    'libjpeg-turbo: Jpeg writing support'
+    'libtiff: Tiff writing support'
+    'dcraw: Support for RAW photos'
+    'brasero: Burn discs'
+    'liboauth: Web albums'
+    'libchamplain: Map Viewer'
+    'libheif: heif/heic/avif file support'
+    'yelp: View help and documentation from the app'
+    'webkit2gtk-4.1: Web services support')
+provides=($pkgname)
+conflicts=('pix-git')
+url='https://github.com/linuxmint/pix'
+source=(git+${url}.git
+  0001-fix-gcc-errors.patch)
+
+md5sums=(
+  'SKIP'
+  'SKIP')
+
+pkgver() {
+  cd "${srcdir}"/${pkgname}
+  git describe --long | sed 's/\([^-]*-g\)/r\1/;s/-/./g'
+}
+
+prepare() {
+  cd ${srcdir}/${pkgname}
+
+  # patch --forward --strip=1 --input=../0001-fix-gcc-errors.patch
+}
+
+build() {
+  mkdir -p "${srcdir}"/${pkgname}/build
+  cd "${srcdir}"/${pkgname}/build
+
+  meson --prefix=/usr \
+    --libexecdir=lib/${pkgname} \
+    --buildtype=plain \
+    ..
+
+  ninja
+}
+
+package() {
+  cd ${srcdir}/${pkgname}/build
+  DESTDIR="${pkgdir}" ninja install
+}

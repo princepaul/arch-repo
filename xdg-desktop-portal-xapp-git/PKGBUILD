@@ -1,0 +1,52 @@
+# Maintainer:
+# Contributor: Mark Wagie
+
+pkgname=xdg-desktop-portal-xapp
+pkgver=1.1.5.unstable.r0.g7f094c4
+pkgrel=1
+pkgdesc='A backend implementation for xdg-desktop-portal using GTK and XApp infrastructure'
+arch=(x86_64)
+url='https://github.com/linuxmint/xdg-desktop-portal-xapp'
+license=('LGPL-2.1-only')
+
+depends=(
+  xdg-desktop-portal
+  xapp
+  gtk3
+  glib2
+)
+
+makedepends=(
+  meson
+  glib2
+)
+
+provides=(xdg-desktop-portal-impl)
+
+options=('!debug')
+
+source=(
+  "git+${url}.git"
+  xapp-portals.conf
+)
+
+b2sums=('SKIP'
+        'c089494e90e0ab6cdb5ea4a50583372318d8bd4c4c074faf909464a084b1a7a97d761829af3479da53b35243c2ec01181818cb649d6db7d26d860ce4017b68fe')
+
+pkgver() {
+  cd "${srcdir}/${pkgname}"
+  git describe --long | sed 's/\([^-]*-g\)/r\1/;s/-/./g'
+}
+
+build() {
+  arch-meson ${pkgname} build
+  meson compile -C build
+}
+
+package() {
+  meson install -C build --destdir "${pkgdir}"
+
+  install -Dm644 \
+    "${srcdir}/xapp-portals.conf" \
+    "${pkgdir}/usr/share/xdg-desktop-portal/xapp-portals.conf"
+}

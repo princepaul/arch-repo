@@ -1,0 +1,62 @@
+# Maintainer: Silvio Fricke <silvio.fricke@gmail.com>
+# Contributor: Martin Wimpress <code@flexion.org>
+
+_pkgname=blueman
+pkgname=${_pkgname}-git
+pkgver=2.4.r152.gec7c9d20
+pkgrel=1
+pkgdesc='A GTK Bluetooth Manager (BlueZ 5) – git'
+arch=(x86_64)
+url='https://github.com/blueman-project/blueman'
+license=('GPL-3.0-or-later')
+provides=('blueman')
+conflicts=('blueman')
+
+depends=(
+  bluez
+  gtk3
+  libnotify
+  polkit
+  python
+  python-dbus
+  python-gobject
+)
+
+optdepends=(
+  'dnsmasq: DHCP server for Network Access Point'
+  'notification-daemon: desktop notifications'
+  'pulseaudio: audio support'
+)
+
+makedepends=(
+  git
+  meson
+  python-docutils
+  python-setuptools
+)
+
+provides=("${_pkgname}")
+conflicts=("${_pkgname}")
+
+options=('!debug')
+
+source=(
+  "${pkgname}::git+https://github.com/blueman-project/${_pkgname}.git"
+)
+
+b2sums=('SKIP')
+
+pkgver() {
+  cd "${srcdir}/${pkgname}"
+  git describe --long --tags \
+    | sed 's/^v//;s/\([^-]*-g\)/r\1/;s/-/./g'
+}
+
+build() {
+  arch-meson "${pkgname}" build
+  meson compile -C build
+}
+
+package() {
+  meson install -C build --destdir "${pkgdir}"
+}

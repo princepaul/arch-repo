@@ -1,0 +1,208 @@
+# Maintainer: Bruno Pagani <archange@archlinux.org>
+# Contributor: Eli Schwartz <eschwartz@archlinux.org>
+# Contributor: Alexandre Filgueira <alexfilgueira@antergos.com>
+
+_srcver=6.7.2-unstable
+pkgbase=nemo-extensions
+pkgname=(nemo-audio-tab
+        nemo-compare
+        #nemo-dropbox dropbox in AUR
+        nemo-emblems
+        nemo-fileroller
+        nemo-image-converter
+        #nemo-media-columns pypdf2 in AUR but mostly unmaintained
+        #nemo-pastebin
+        #nemo-preview
+         nemo-python
+        #nemo-repairer
+        #nemo-seahorse
+        #nemo-share
+        nemo-terminal
+)
+pkgver=6.7.2_unstable
+pkgrel=1
+pkgdesc="Various extensions for Nemo"
+arch=(x86_64)
+license=(GPL2)
+url="https://github.com/linuxmint/nemo-extensions"
+depends=(nemo)
+_preview_deps=(cjs clutter-gtk clutter-gst gtksourceview4 xreader)
+_python_deps=(python-gobject)
+#_seahorse_deps=(libcryptui)
+makedepends=(intltool gobject-introspection meson samurai)
+makedepends+=("${_python_deps[@]}" "${_seahorse_deps[@]}")
+options=(!emptydirs strip !debug)
+source=(${url}/archive/${_srcver}/${pkgbase}-${_srcver}.tar.gz)
+b2sums=('SKIP')
+
+prepare() {
+  rm -r "${pkgbase}-${_srcver}"/*/debian # Fix build with newer setuptools
+}
+
+build() {
+  cd ${pkgbase}-${_srcver}
+
+  for _dir in "${pkgname[@]}"; do
+    if [[ -f ${_dir}/meson.build ]]; then
+      mkdir -p ${_dir}/build
+      pushd ${_dir}/build
+      arch-meson --libexecdir=lib/${_dir} ..
+      samu
+      popd
+    fi
+  done
+
+  cd nemo-audio-tab
+  python setup.py build
+  cd ..
+
+  cd nemo-emblems
+  python setup.py build
+  cd ..
+
+  cd nemo-pastebin
+  python setup.py build
+  cd ..
+}
+
+package_nemo-audio-tab(){
+  pkgdesc="View audio tag information in Nemo properties tab"
+  depends+=(nemo-python python-mutagen)
+  optdepends=('cinnamon-translations: i18n')
+
+  cd ${pkgbase}-${_srcver}/${pkgname}
+  python setup.py install --prefix=/usr --root="${pkgdir}" --skip-build --optimize=1
+}
+
+package_nemo-emblems(){
+  pkgdesc="Change a folder or file emblem in Nemo"
+  depends+=(nemo-python)
+  optdepends=('cinnamon-translations: i18n')
+
+  cd ${pkgbase}-${_srcver}/${pkgname}
+  python setup.py install --prefix=/usr --root="${pkgdir}" --skip-build --optimize=1
+}
+
+package_nemo-fileroller(){
+  pkgdesc="File archiver extension for Nemo"
+  depends+=(file-roller)
+  optdepends=('cinnamon-translations: i18n')
+
+  cd ${pkgbase}-${_srcver}/${pkgname}/build
+  DESTDIR="${pkgdir}" samu install
+}
+
+package_nemo-image-converter(){
+  pkgdesc="Nemo extension to rotate/resize image files"
+  depends+=(imagemagick)
+  optdepends=('cinnamon-translations: i18n')
+
+  cd ${pkgbase}-${_srcver}/${pkgname}/build
+  DESTDIR="${pkgdir}" samu install
+}
+
+package_nemo-preview(){
+  pkgdesc="Quick file previewer for Nemo"
+  depends+=("${_preview_deps[@]}")
+  optdepends=('cinnamon-translations: i18n')
+
+  cd ${pkgbase}-${_srcver}/${pkgname}/build
+  DESTDIR="${pkgdir}" samu install
+}
+
+package_nemo-pastebin(){
+  pkgdesc="Nemo extension to send files to a pastebin"
+  depends+=(nemo-python pastebinit)
+  optdepends=('cinnamon-translations: i18n')
+
+  cd ${pkgbase}-${_srcver}/${pkgname}
+  python setup.py install --prefix=/usr --root="${pkgdir}" --skip-build --optimize=1
+}
+
+package_nemo-python() {
+  pkgdesc="Python3 binding for Nemo components"
+  depends+=("${_python_deps[@]}")
+
+  cd ${pkgbase}-${_srcver}/${pkgname}/build
+  DESTDIR="${pkgdir}" samu install
+}
+
+package_nemo-seahorse(){
+  pkgdesc="PGP encryption and signing extension for Nemo"
+  depends+=("${_seahorse_deps[@]}")
+  optdepends=('cinnamon-translations: i18n')
+
+  cd ${pkgbase}-${_srcver}/${pkgname}/build
+  DESTDIR="${pkgdir}" samu install
+}
+
+package_nemo-share(){
+  pkgdesc="Samba extension for Nemo"
+  depends+=(samba)
+  optdepends=('cinnamon-translations: i18n')
+
+  cd ${pkgbase}-${_srcver}/${pkgname}/build
+  DESTDIR="${pkgdir}" samu install
+}
+
+package_nemo-terminal(){
+  pkgdesc="Embedded terminal window for Nemo"
+  depends=(nemo-python vte3)
+
+  cd ${pkgbase}-${_srcver}/${pkgname}
+  install -Dm644 src/nemo_terminal.py -t "${pkgdir}"/usr/share/nemo-python/extensions/
+  install -Dm755 src/nemo-terminal-prefs.py "${pkgdir}"/usr/bin/nemo-terminal-prefs
+  install -Dm644 src/org.nemo.extensions.nemo-terminal.gschema.xml -t "${pkgdir}"/usr/share/glib-2.0/schemas/
+  install -Dm644 pixmap/logo_120x120.png -t "${pkgdir}"/usr/share/nemo-terminal/
+}
+
+## missing kaa-base in the repos
+#package_nemo-media-columns(){
+#    pkgdesc=("A Nemo extension to display music/EXIF and PDF metadata info in the Nemo List View")
+#    depends=('nemo-python' 'mutagen' 'python2-exiv2' 'python2-kaa-base' 'python2-pillow' 'python2-pypdf')
+#
+#    cd "${srcdir}"/${pkgbase}-${_srcver}/${pkgname}
+#    install -Dm644 nemo-media-columns.py \
+#        "${pkgdir}"/usr/share/nemo-python/extensions/nemo-media-columns.py
+#}
+
+## no clue what any of this does
+# package_nemo-compare() {
+#   cd ${pkgbase}-${_srcver}/nemo-compare
+
+#   pkgdesc="Context menu comparison extension for Nemo file manager"
+#   depends=(python2 python2-xdg meld nemo-python)
+
+#   install -d ${pkgdir}/usr/share/applications/
+#   install -d ${pkgdir}/usr/share/nemo-compare/
+
+#   install -Dm755 ${srcdir}/data/nemo-compare-preferences.desktop \
+#                   /usr/share/applications/nemo-compare-preferences.desktop
+#   install -Dm755 ${srcdir}/data/nemo-compare-notification \
+#                   /usr/share/nemo-compare/nemo-compare-notification
+#   install -Dm755 ${srcdir}/src/nemo-compare.py \
+#                   /usr/share/nemo-compare/nemo-compare.py
+#   install -Dm755 ${srcdir}/src/utils.py \
+#                   /usr/share/nemo-compare/utils.py
+#   install -Dm755 ${srcdir}/src/nemo-compare-preferences.py \
+#                   /usr/share/nemo-compare/nemo-compare-preferences.py
+
+# }
+
+package_nemo-compare() {
+    pkgdesc="Context menu comparison extension for Nemo file manager"
+    arch=('any')
+    license=('GPL3')
+    depends=('nemo-python>=3.9.0' 'python-xdg' 'python-gobject')
+    optdepends=('meld: Install at least one file comparison program'
+                'kompare: Additional comparison options (preferred diff, three-way, multi-compare)'
+	            'fldiff: Additional comparison options (preferred diff, three-way, multi-compare)'
+	            'diffuse: Alternate comparison backend'
+	            'kdiff3: Alternate comparison backend')
+    #provides=("${pkgname}=${_pkgver}")
+    #conflicts=("${pkgname}")
+
+    cd ${pkgbase}-${_srcver}/nemo-compare
+  	python ./setup.py install --prefix=/usr --root="${pkgdir}" \
+  		--no-compile -O0
+}

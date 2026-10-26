@@ -1,0 +1,167 @@
+# Maintainer: Bruno Pagani <archange@archlinux.org>
+# Contributor: Eli Schwartz <eschwartz@archlinux.org>
+# Contributor: Alexandre Filgueira <alexfilgueira@cinnarch.com>
+# Contributor: M0Rf30
+# Contributor: unifiedlinux
+# Contributor: CReimer
+# Contributor: Prince Paul <prince.paul.k@gmail.com>
+
+pkgname=cinnamon
+pkgver=6.7.9.unstable.r12.g1e9c44cb1
+pkgrel=1
+pkgdesc='Desktop environment which provides advanced innovative features and a traditional user experience'
+arch=(x86_64)
+url="https://github.com/linuxmint/${pkgname}"
+license=(GPL-2.0-or-later)
+depends=(
+  accountsservice
+  at-spi2-core
+  bash
+  cairo
+  cinnamon-control-center
+  cinnamon-desktop
+  cinnamon-menus
+  cinnamon-screensaver
+  cinnamon-session
+  cinnamon-settings-daemon
+  cinnamon-translations
+  cjs
+  dconf
+  evolution-data-server
+  gcc-libs
+  gcr
+  gdk-pixbuf2
+  glib2
+  glibc
+  gnome-backgrounds
+  gnome-themes-extra
+  gsound
+  gstreamer
+  gtk3
+  gtk4-layer-shell
+  hicolor-icon-theme
+  libgirepository
+  libglvnd
+  libibus
+  libical
+  libkeybinder3
+  libnm
+  libnotify
+  libsecret
+  libx11
+  libxfixes
+  libxml2
+  muffin
+  nemo
+  network-manager-applet
+  pango
+  papirus-icon-theme
+  polkit
+  python
+  python-cairo
+  python-gobject
+  python-pam
+  python-pexpect
+  python-pillow
+  python-psutil
+  python-pyinotify
+  python-pytz
+  python-requests
+  python-setproctitle
+  python-tinycss2
+  python-xapp
+  sound-theme-freedesktop
+  timezonemap
+  upower
+  xapp
+  xdg-desktop-portal-xapp
+)
+optdepends=(
+  'blueman: Bluetooth support'
+  'gnome-keyring: Secrets service backend'
+  'ibus: input method support'
+  'switcheroo-control: GPU offloading'
+  'system-config-printer: printer settings'
+  'touchegg: touch gestures'
+  'wget: cover download support in audio applet'
+)
+makedepends=(
+  git
+  glib2-devel
+  gobject-introspection
+  gtk-doc
+  gtk4
+  gtk4-layer-shell
+  meson
+  python-libsass
+)
+conflicts=("caribou<=0.4.21+75+g8ad9883-8")
+options=('!emptydirs' '!debug')
+source=(git+${url}.git
+  cinnamon-menu-button.patch
+  cinnamon-set-wheel.patch
+  30_org.archlinux.cinnamon.gschema.override
+  cinnamon.css
+  toggle-on.svg
+  toggle-off.svg
+  add_decls.patch
+        )
+
+b2sums=('SKIP'
+        'SKIP'
+        'SKIP'
+        'SKIP'
+        'SKIP'
+        'SKIP'
+        'SKIP'
+        'SKIP')
+
+pkgver() {
+    cd "${srcdir}"/${pkgname}
+    git describe --long | sed 's/\([^-]*-g\)/r\1/;s/-/./g'
+}
+
+prepare() {
+  cd ${srcdir}/${pkgname}
+
+  # Add Traditional button layout option
+  # https://github.com/linuxmint/cinnamon/pull/13326
+  git apply -3 ../cinnamon-menu-button.patch
+
+  # Use wheel group instread of sudo (taken from Fedora)
+  patch -Np1 -i ../cinnamon-set-wheel.patch
+
+  # Cinnamon has no upstream backgrounds, use GNOME backgrounds instead
+  # https://github.com/linuxmint/cinnamon/issues/3575#issuecomment-374887122
+  sed -i 's|/usr/share/cinnamon-background-properties|/usr/share/gnome-background-properties|' \
+    files/usr/share/cinnamon/cinnamon-settings/modules/cs_backgrounds.py
+
+  # Don't hide any valid themes from the list
+  sed -i '/if .* in THEMES_BLACKLIST:/,+1 d' files/usr/share/cinnamon/cinnamon-settings/modules/cs_themes.py
+}
+
+build() {
+  arch-meson $pkgname build \
+    --libexecdir=lib/$pkgname \
+    -D docs=true
+  meson compile -C build
+}
+
+package() {
+  meson install -C build --destdir="$pkgdir"
+  install -Dm644 -t "$pkgdir/usr/share/glib-2.0/schemas" 30_org.archlinux.cinnamon.gschema.override
+
+  # Replace the theme with your custom version
+  cp -f "$srcdir/cinnamon.css" "$pkgdir/usr/share/cinnamon/theme/cinnamon.css"
+  cp -f "$srcdir/toggle-on.svg" "$pkgdir/usr/share/cinnamon/theme/toggle-on.svg"
+  cp -f "$srcdir/toggle-off.svg" "$pkgdir/usr/share/cinnamon/theme/toggle-off.svg"
+
+  
+  # Verify the replacement
+  if cmp "$srcdir/cinnamon.css" "$pkgdir/usr/share/cinnamon/theme/cinnamon.css" >/dev/null; then
+      echo "✓ Custom cinnamon.css successfully installed"
+  else
+      echo "✗ Failed to replace cinnamon.css"
+      exit 1
+  fi
+}

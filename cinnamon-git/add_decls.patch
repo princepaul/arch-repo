@@ -1,0 +1,9 @@
+--- a/src/main.c
++++ b/src/main.c
+@@ -13,5 +13,7 @@
+ #include <glib/gi18n-lib.h>
+ #include <girepository.h>
++void g_irepository_prepend_search_path (const char *directory);
++void g_irepository_prepend_library_path (const char *directory);
+ #include <meta/main.h>
+ #include <meta/meta-plugin.h>

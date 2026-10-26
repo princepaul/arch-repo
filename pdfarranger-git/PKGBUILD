@@ -1,0 +1,51 @@
+# Maintainer:  Berrit Birkner <aur at bbirkner.de>
+# Contributor:  Alois Nespor <alium at artixlinux.org>
+
+pkgname=pdfarranger-git
+pkgver=1.14.0.r1359.fb76e09
+pkgrel=1
+pkgdesc="Helps merge or split pdf documents and rotate, crop and rearrange pages."
+arch=('any')
+url="https://github.com/pdfarranger/pdfarranger"
+license=('GPL-3.0-or-later')
+depends=('gtk3'
+    'python-gobject'
+    'python-cairo'
+    'python-pikepdf'
+    'python-dateutil'
+    'ghostscript'
+    'poppler-glib'
+    'python-importlib-metadata'
+)
+makedepends=('git'
+    'python-setuptools'
+    'python-build'
+    'python-wheel'
+)
+optdepends=(
+    'img2pdf: support for image files'
+    'libhandy: alternate graphics backend'
+)
+conflicts=('pdfshuffler' 'pdfshuffler-git' 'pdfarranger')
+provides=('pdfarranger')
+source=($pkgname::"git+https://github.com/pdfarranger/pdfarranger.git")
+md5sums=('SKIP')
+
+pkgver () {
+    cd "$srcdir/$pkgname"
+    _VERSION="$(python setup.py --version)"
+    printf "%s.r%s.%s" "$_VERSION" "$(git rev-list --count HEAD)" "$(git rev-parse --short HEAD)"
+}
+
+build () {
+    cd "$srcdir/$pkgname"
+    rm -rf dist
+    python -m build --wheel --no-isolation
+}
+
+package () {
+    cd "$srcdir/$pkgname"
+    pip install --no-deps --no-compile --ignore-installed --prefix=/usr --root="${pkgdir}" dist/*.whl
+    find "${pkgdir}" -name '__pycache__' -type d -exec rm -rf {} + 2>/dev/null
+    rm -f "${pkgdir}"/usr/lib/python*/site-packages/pdfarranger-*.dist-info/direct_url.json
+}

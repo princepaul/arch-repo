@@ -1,0 +1,13 @@
+--- a/meson.build
++++ b/meson.build
+@@ -24,6 +24,10 @@ schema_dir = join_paths(datadir, 'glib-2.0', 'schemas')
+ 
+ po_dir = join_paths(meson.source_root(), 'po')
+ 
++# Add compatibility include path for girepository headers
++# This works around libpeas/gobject-introspection header location changes
++add_project_arguments(['-I' + meson.source_root() + '/../girepository-compat'], language: 'c')
++
+ # dependencies
+ libxml = dependency('libxml-2.0', version: '>= 2.5.0')
+ glib = dependency('glib-2.0', version: '>= 2.40.0')

@@ -1,0 +1,16 @@
+# Build sources and outputs (add to the repo root .gitignore)
+/src/
+/pkg/
+*.pkg.tar.zst
+*.pkg.tar.xz
+*.pkg.tar.zsig
+*.pkg.tar.sig
+/dist/
+/arch-repo/
+
+# Check out this content when creating a per-package .gitignore inside
+# each *-git directory (or just use the root .gitignore above once this
+# directory becomes the git repo root):
+#   /src/
+#   /pkg/
+#   *.pkg.tar.zst

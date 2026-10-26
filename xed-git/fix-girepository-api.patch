@@ -1,0 +1,23 @@
+--- a/xed/xed-app.c.orig	2025-12-20 14:41:08.602626639 +0530
++++ a/xed/xed-app.c	2025-12-20 14:41:15.021846863 +0530
+@@ -45,6 +45,11 @@
+ #endif
+ #endif
+ 
++/* Forward declarations for deprecated g_irepository functions */
++#ifdef ENABLE_INTROSPECTION
++extern GOptionGroup *g_irepository_get_option_group (void);
++#endif
++
+ #include "xed-app.h"
+ #include "xed-commands.h"
+ #include "xed-notebook.h"
+@@ -996,7 +1001,7 @@
+     g_application_add_main_option_entries (G_APPLICATION (app), options);
+ 
+ #ifdef ENABLE_INTROSPECTION
+-#if PYGOBJECT_MAJOR_VERSION > 3 || (PYGOBJECT_MAJOR_VERSION == 3 && PYGOBJECT_MINOR_VERSION > 50)
++#if 0
+     g_application_add_option_group (G_APPLICATION (app), gi_repository_get_option_group ());
+ #else
+     g_application_add_option_group (G_APPLICATION (app), g_irepository_get_option_group ());

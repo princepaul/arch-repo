@@ -1,0 +1,33 @@
+# Maintainer: Rellieberman <name AT gmail DOT com>
+# Contributor: Prince Paul <prince.paul.k@gmail.com>
+pkgname=bulky
+pkgver=4.2.r1.g26be5a5
+pkgrel=1
+pkgdesc="Bulk File Renamer"
+arch=("i686" "x86_64")
+url="https://github.com/linuxmint/bulky"
+licence=("GPL3")
+depends=('python-magic' 'xapp' 'python-xapp' 'python-gobject' 'python-setproctitle')
+source=(git+${url}.git)
+pkgver() {
+    cd "${srcdir}"/${pkgname}
+    git describe --long | sed 's/\([^-]*-g\)/r\1/;s/-/./g'
+}
+sha256sums=('SKIP')
+
+prepare()
+{
+  sed -i "s/__DEB_VERSION__/${pkgver}/" "$srcdir"/"$pkgname"/usr/lib/bulky/bulky.py
+}
+
+build()
+{
+  cd ${srcdir}/${pkgname}
+  make
+}
+
+package()
+{
+  cd ${srcdir}/${pkgname}
+  cp -r usr "$pkgdir"
+}

@@ -1,0 +1,11 @@
+--- a/meson.build
++++ b/meson.build
+@@ -45,7 +45,7 @@ gtksourceview_dep = dependency('gtksourceview-4', version: '>= 4.0.2')
+ libpeas_dep = dependency('libpeas-1.0', version: '>= 1.12.0')
+ libpeas_gtk_dep = dependency('libpeas-gtk-1.0', version: '>= 1.12.0')
+ 
+-introspection_dep = dependency('gobject-introspection-1.0', version: '>= 0.9.3')
++introspection_dep = dependency('gobject-introspection-1.0', version: '>= 0.9.3', required: true)
+ 
+ gmodule_dep = dependency('gmodule-2.0')
+ xapp_dep = dependency('xapp', version: '>= 1.9.0')

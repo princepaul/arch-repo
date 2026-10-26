@@ -1,0 +1,37 @@
+# Build Order for Cinnamon
+# cinnamon-translations
+cinnamon-desktop-git
+cinnamon-menus-git
+# install
+cinnamon-session-git
+cinnamon-settings-daemon-git
+cinnamon-screensaver-git
+cjs-git
+# install
+cinnamon-control-center-git
+muffin-git
+xapp-symbolic-icons-git
+xapp-git
+xdg-desktop-portal-xapp-git
+# install
+cinnamon-git
+nemo-git
+# install
+python-xapp-git
+xed-git
+bulky-git
+mint-x-icons-git
+mint-y-icons-git
+mint-themes-git
+pix-git
+xreader-git
+hypnotix-git
+# lightdm-settings-git
+# lightdm-slick-greeter-git
+pdfarranger-git
+timeshift-git
+webapp-manager-git
+nemo-extensions-git
+blueman-git
+# python-pyrotgfork-git
+# python-pyrogram-kurimuzon-git

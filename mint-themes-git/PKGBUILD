@@ -1,0 +1,49 @@
+# Maintainer: hacker1024 <joshleivenzon at outlook dot com>
+
+pkgname=mint-themes
+pkgver=2.4.3.r1.gf339eea6
+pkgrel=1
+pkgdesc='A collection of Mint themes (GTK, Cinnamon, Xfce)'
+arch=(any)
+url='https://github.com/linuxmint/mint-themes'
+license=('GPL-3.0-or-later')
+
+makedepends=(
+  inkscape
+  optipng
+  python
+  sassc
+)
+
+optdepends=(
+  'ttf-ubuntu-font-family: recommended fonts'
+  'mint-y-icons: Mint-Y icon theme'
+  'mint-x-icons: Mint-X icon theme'
+)
+
+conflicts=(
+  mint-x-theme
+  mint-y-theme
+  mint-cinnamon-themes
+)
+
+options=('!debug')
+
+source=('git+https://github.com/linuxmint/mint-themes.git')
+b2sums=('SKIP')
+
+pkgver() {
+  cd "${srcdir}/${pkgname}"
+  git describe --long --tags \
+    | sed 's/\([^-]*-g\)/r\1/;s/-/./g'
+}
+
+build() {
+  cd "${srcdir}/${pkgname}"
+  make
+}
+
+package() {
+  cd "${srcdir}/${pkgname}"
+  cp -a usr "${pkgdir}"
+}

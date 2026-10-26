@@ -1,0 +1,114 @@
+# Maintainer: Bruno Pagani <archange@archlinux.org>
+# Contributor: Eli Schwartz <eschwartz@archlinux.org>
+# Contributor: Alexandre Filgueira <alexfilgueira@cinnarch.com>
+# Contributor: Adam Hani Schakaki <adam@schakaki.net>
+# Contributor: Ner0
+
+pkgname=muffin
+pkgver=6.7.9.unstable.r6.g75647279e
+pkgrel=1
+pkgdesc='Cinnamon window manager based on Mutter'
+arch=(x86_64)
+url='https://github.com/linuxmint/muffin'
+license=(GPL-2.0-or-later)
+depends=(
+  at-spi2-core
+  cairo
+  cinnamon-desktop
+  cinnamon-settings-daemon
+  dconf
+  fontconfig
+  fribidi
+  gcc-libs
+  gdk-pixbuf2
+  glib2
+  glibc
+  graphene
+  gtk3
+  json-glib
+  libcanberra
+  libdrm
+  libglvnd
+  libgudev
+  libice
+  libinput
+  libpipewire
+  libsm
+  libwacom
+  libx11
+  libxau
+  libxcb
+  libxcomposite
+  libxcursor
+  libxdamage
+  libxext
+  libxfixes
+  libxi
+  libxinerama
+  libxkbcommon
+  libxkbcommon-x11
+  libxkbfile
+  libxrandr
+  libxtst
+  mesa
+  pango
+  pipewire
+  startup-notification
+  systemd-libs
+  wayland
+  xorg-xwayland
+  zenity
+)
+makedepends=(
+  egl-wayland
+  git
+  glib2-devel
+  gobject-introspection
+  meson
+  wayland-protocols
+)
+options=(
+  !'emptydirs'
+  '!debug')
+source=(
+  git+${url}.git
+  muffin-menu-icon.patch
+  muffin-wayland-wm-capabilities.patch 
+)
+b2sums=(
+  'SKIP'
+  'SKIP'
+  'SKIP'
+)
+options=(
+  '!debug'
+)
+
+pkgver() {
+    cd "${srcdir}"/${pkgname}
+    git describe --long | sed 's/\([^-]*-g\)/r\1/;s/-/./g'
+}
+
+prepare() {
+  cd $pkgname
+
+  # Use window icon for the menu button if available
+  # https://github.com/linuxmint/muffin/pull/778
+  git apply -3 ../muffin-menu-icon.patch
+
+  # Implement support for xdg_toplevel.wm_capabilities
+  # https://github.com/linuxmint/muffin/pull/780
+  git apply -3 ../muffin-wayland-wm-capabilities.patch
+}
+
+build() {
+  arch-meson $pkgname build \
+    -D egl_device=true \
+    -D wayland_eglstream=true
+  meson compile -C build
+}
+
+package() {
+  meson install -C build --destdir="$pkgdir"
+}
+

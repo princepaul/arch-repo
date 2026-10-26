@@ -1,0 +1,63 @@
+# Maintainer: Bruno Pagani <archange@archlinux.org>
+# Contributor: Eli Schwartz <eschwartz@archlinux.org>
+# Contributor: Alexandre Filgueira <alexfilgueira@cinnarch.com>
+# Based on gnome-screensaver package:
+# Jan Alexander Steffens (heftig) <jan.steffens@gmail.com>
+# Jan de Groot <jgc@archlinux.org>
+
+pkgname=cinnamon-screensaver
+pkgver=6.7.4.unstable.r0.g1b5ec05
+pkgrel=1
+pkgdesc="Screensaver designed to integrate well with the Cinnamon desktop."
+arch=(x86_64)
+url="https://github.com/linuxmint/${pkgname}"
+license=(GPL-2.0-or-later)
+depends=(
+  accountsservice
+  bash
+  cinnamon-desktop
+  gcc-libs
+  gdk-pixbuf2
+  glib2
+  glibc
+  gtk3
+  hicolor-icon-theme
+  libx11
+  libxext
+  libxinerama
+  libxrandr
+  pam
+  pango
+  python
+  python-cairo
+  python-gobject
+  python-setproctitle
+  python-xapp
+  xdotool
+  xorg-xprop
+)
+optdepends=('cinnamon-translations: i18n')
+makedepends=(
+  git
+  glib2-devel
+  gobject-introspection
+  meson
+)
+backup=(etc/pam.d/cinnamon-screensaver)
+options=('!emptydirs' '!debug')
+source=(git+${url}.git)
+b2sums=('SKIP')
+
+pkgver() {
+    cd "${srcdir}"/${pkgname}
+    git describe --long | sed 's/\([^-]*-g\)/r\1/;s/-/./g'
+}
+
+build() {
+  arch-meson $pkgname build
+  meson compile -C build
+}
+
+package() {
+  meson install -C build --destdir="$pkgdir"
+}

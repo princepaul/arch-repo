@@ -1,0 +1,85 @@
+# Maintainer: Bruno Pagani <archange@archlinux.org>
+# Contributor: Eli Schwartz <eschwartz@archlinux.org>
+# Contributor: Alex Filgueira <alexfilgueira (at antergos.com)>
+# Contributor: Nate Simon <aurpkg (at natesimon.net)>
+
+pkgname=xapp
+pkgver=3.3.1.unstable.r0.g3e891b0
+pkgrel=1
+pkgdesc='Cross-desktop libraries and common resources for GTK environments (Cinnamon, MATE, Xfce)'
+arch=(x86_64)
+url="https://github.com/linuxmint/${pkgname}"
+license=('LGPL-2.1-only' 'GPL-3.0-or-later')
+
+depends=(
+  'gtk3'
+  'libx11'
+  'libxfixes'
+  'libxrandr'
+  'libxkbfile'
+  'upower'
+  'libnotify'
+  'gtk-layer-shell'
+  'libdbusmenu-gtk3'
+  'libgnomekbd'
+)
+makedepends=(
+  'meson'
+  'samurai'
+  'gobject-introspection'
+  'python-gobject'
+  'vala'
+  'glib2'
+  'intltool'
+)
+
+provides=('xapps')
+conflicts=('xapps')
+replaces=('xapps')
+
+source=(git+${url}.git)
+b2sums=('SKIP')
+
+pkgver() {
+  cd "${srcdir}/${pkgname}"
+  local commit_hash
+  commit_hash=$(git rev-parse --short=7 HEAD)
+  echo "3.3.1.unstable.r0.g${commit_hash}"
+}
+
+build() {
+  arch-meson ${pkgname} build \
+    -D docs=false
+  samu -C build
+}
+
+package() {
+  DESTDIR="${pkgdir}" samu -C build install
+
+  # Remove the compiled schemas file - it should be generated at install time
+  rm -f "${pkgdir}/usr/share/glib-2.0/schemas/gschemas.compiled"
+
+  # Compile Python bytecode for GObject introspection overrides
+  local site_packages
+  site_packages=$(python -c "import site; print(site.getsitepackages()[0])")
+  
+  if [[ -d "${pkgdir}${site_packages}" ]]; then
+    python -m compileall -o 0 -o 1 -o 2 --hardlink-dupes \
+      -s "${pkgdir}" "${pkgdir}${site_packages}"
+  fi
+}
+
+post_install() {
+  # Compile GSettings schemas
+  glib-compile-schemas /usr/share/glib-2.0/schemas/
+  update-desktop-database -q
+}
+
+post_upgrade() {
+  post_install
+}
+
+post_remove() {
+  glib-compile-schemas /usr/share/glib-2.0/schemas/
+  update-desktop-database -q
+}

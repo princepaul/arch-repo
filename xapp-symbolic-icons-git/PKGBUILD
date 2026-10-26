@@ -1,0 +1,35 @@
+# Maintainer: Prince Paul <prince dot paul dot k @ gmail dot com>
+
+pkgname=xapp-symbolic-icons-git
+pkgver=1.1.0.r0.g2c91ca1
+pkgrel=1
+pkgdesc='Symbolic icons for XApp project (git version)'
+arch=(any)
+url='https://github.com/xapp-project/xapp-symbolic-icons'
+license=('GPL-2.0-only')
+
+makedepends=(git meson)
+
+provides=("${pkgname%-git}")
+conflicts=("${pkgname%-git}")
+
+options=('!debug')
+
+source=('git+https://github.com/xapp-project/xapp-symbolic-icons.git')
+b2sums=('SKIP')
+
+pkgver() {
+  cd "${srcdir}/${pkgname%-git}"
+  git describe --long | sed 's/\([^-]*-g\)/r\1/;s/-/./g'
+}
+
+build() {
+  cd "${srcdir}/${pkgname%-git}"
+  arch-meson . build
+  meson compile -C build
+}
+
+package() {
+  cd "${srcdir}/${pkgname%-git}"
+  DESTDIR="${pkgdir}" meson install -C build
+}

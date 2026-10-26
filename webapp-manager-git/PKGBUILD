@@ -1,0 +1,51 @@
+# Maintainer: Mark Wagie <mark dot wagie at tutanota.com>
+# Contributor: spsf64 <at g m a i l  dot com>
+pkgname=webapp-manager
+pkgver=1.4.6.r1.gc35fdd9
+pkgrel=1
+pkgdesc="Run websites as if they were apps"
+arch=('any')
+url="https://github.com/linuxmint/webapp-manager"
+license=('GPL-3.0-or-later')
+depends=(
+  'dconf'
+  'python-beautifulsoup4'
+  'python-configobj'
+  'python-gobject'
+  'python-pillow'
+  'python-setproctitle'
+  'python-tldextract'
+  'xapp'
+  'xapp-symbolic-icons'
+)
+source=(git+${url}.git)
+options=(
+  'strip' 
+  '!debug')
+pkgver() {
+    cd "${srcdir}"/${pkgname}
+    git describe --long | sed 's/\([^-]*-g\)/r\1/;s/-/./g'
+}
+sha256sums=('SKIP')
+
+prepare() {
+  cd "$pkgname"
+
+  # # Fix license path
+  # sed -i 's|common-licenses/GPL/licenses|common/GPL/license.txt|g' \
+  #   "usr/lib/$pkgname/$pkgname.py"
+
+  # Set version in About dialog
+  sed -i "s/__DEB_VERSION__/$pkgver/g" \
+    "usr/lib/$pkgname/$pkgname.py"
+}
+
+build() {
+  cd "$pkgname"
+  make
+}
+
+package() {
+  cd "$pkgname"
+  cp -r etc usr "$pkgdir"
+}

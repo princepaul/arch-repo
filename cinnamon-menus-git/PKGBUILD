@@ -1,0 +1,39 @@
+# Maintainer: Bruno Pagani <archange@archlinux.org>
+# Contributor: Eli Schwartz <eschwartz@archlinux.org>
+# Contributor: Alexandre Filgueira <alexfilgueira@antergos.com>
+
+pkgname=cinnamon-menus
+pkgver=6.7.1.unstable.r0.g1461deb
+pkgrel=1
+pkgdesc="Cinnamon menu specifications"
+arch=(x86_64)
+url="https://github.com/linuxmint/cinnamon-menus"
+license=(LGPL-2.0-or-later)
+depends=(
+  glib2
+  glibc
+)
+makedepends=(
+  git
+  gobject-introspection
+  meson
+)
+source=(git+${url}.git)
+sha256sums=('SKIP')
+b2sums=('SKIP')
+options=('!emptydirs' '!debug')
+
+pkgver() {
+    cd "${srcdir}"/${pkgname}
+    git describe --long | sed 's/\([^-]*-g\)/r\1/;s/-/./g'
+}
+
+build() {
+  arch-meson $pkgname build
+  meson compile -C build
+}
+
+package(){
+  meson install -C build --destdir="$pkgdir"
+}
+
