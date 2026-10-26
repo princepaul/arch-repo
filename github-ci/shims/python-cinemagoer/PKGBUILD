@@ -1,0 +1,18 @@
+# CI-only shim package. Runs exclusively inside the GitHub Actions container
+# so that `makepkg --syncdeps` can resolve the AUR-only dependency
+# 'python-cinemagoer' (used by hypnotix-git).
+#
+# On real machines the actual AUR package must be installed (e.g. via your
+# AUR helper); this shim is never published to the packages branch.
+pkgname=python-cinemagoer
+pkgver=20220919
+pkgrel=1
+pkgdesc='CI shim: satisfies dependency resolution for hypnotix-git (real AUR pkg required locally)'
+arch=('any')
+url='https://github.com/YasserSinjab/cinemagoer-dummy'
+license=('GPL-2.0-or-later')
+options=('!strip')
+
+package() {
+    install -d "$pkgdir/usr/lib/python3.x/site-packages"
+}

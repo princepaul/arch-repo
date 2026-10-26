@@ -21,6 +21,7 @@ makedepends=('git'
     'python-setuptools'
     'python-build'
     'python-wheel'
+    'python-pip'
 )
 optdepends=(
     'img2pdf: support for image files'

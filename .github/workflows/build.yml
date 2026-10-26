@@ -52,6 +52,21 @@ jobs:
             echo 'builder ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/builder
             chown -R builder:builder .
 
+      - name: Build + install AUR-only dependency shims
+        run: |
+            shopt -s nullglob
+            pks=()
+            for sd in github-ci/shims/*/; do
+                [[ -d "$sd" ]] || continue
+                ( cd "$sd" && sudo -u builder -H makepkg --noconfirm -f ) && pks+=("$sd"*.pkg.tar.zst)
+            done
+            shopt -u nullglob
+            if [[ ${#pks[@]} -eq 0 ]]; then
+                echo "No dependency shims configured."
+                exit 0
+            fi
+            sudo pacman -U --noconfirm "${pks[@]}"
+
       - name: Build changed packages + dependents
         env:
           PKGS: ${{ needs.check.outputs.packages }}
@@ -87,6 +102,7 @@ jobs:
             gh release upload latest ./*.pkg.tar.zst ./prince.db.tar.gz ./prince.files.tar.gz ./SHA256SUMS --clobber
 
       - name: Commit updated .upstream refs
+        if: always()
         run: |
             sudo -u builder -H git -C "$GITHUB_WORKSPACE" config user.name "github-actions[bot]"
             sudo -u builder -H git -C "$GITHUB_WORKSPACE" config user.email "41898282+github-actions[bot]@users.noreply.github.com"

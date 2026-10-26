@@ -88,7 +88,7 @@ process_directory() {
     fi
 
     # Install so later packages in build-order build against them
-    sudo pacman -U --noconfirm "${built[@]}" || { failures+=("$dir"); return; }
+    sudo pacman -U --noconfirm --ask 4 "${built[@]}" || { failures+=("$dir"); return; }
 
     # Collect artifacts
     local pkg
