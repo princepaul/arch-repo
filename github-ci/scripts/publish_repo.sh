@@ -29,7 +29,7 @@ DIST_DIR_ABS="$(cd "$DIST_DIR" && pwd)"
 shopt -s nullglob
 pkgs=("$DIST_DIR"/*.pkg.tar.zst)
 shopt -u nullglob
-[[ ${#pkgs[@]} -gt 0 ]] || { echo "No packages in $DIST_DIR; nothing to publish."; exit 0; }
+[[ ${#pkgs[@]} -gt 0 ]] || { echo "ERROR: No packages in $DIST_DIR; refusing to publish (empty build?)" >&2; exit 1; }
 
 # ---- 1. Get a checkout of the packages branch ----
 work="${LOCAL_REPO_DIR:-}"

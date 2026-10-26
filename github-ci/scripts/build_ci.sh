@@ -40,6 +40,11 @@ if [[ ${#requested[@]} -eq 1 && "${requested[0]}" == "all" ]]; then
     build_all=true
 fi
 
+if [[ "$build_all" == false && ${#requested[@]} -eq 0 ]]; then
+    echo "ERROR: PKGS is empty and build_all is false - nothing requested (CI env misconfigured)" >&2
+    exit 1
+fi
+
 # ---- Build one directory ----
 process_directory() {
     local dir="$1"
@@ -133,6 +138,11 @@ fi
 
 if [[ ${#failures[@]} -gt 0 ]]; then
     echo "The following packages failed: ${failures[*]}" >&2
+    exit 1
+fi
+
+if [[ ${#built_pkgs[@]} -eq 0 ]]; then
+    echo "ERROR: build completed with zero packages (empty PKGS match or missing artifacts)" >&2
     exit 1
 fi
 

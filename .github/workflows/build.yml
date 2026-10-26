@@ -55,14 +55,14 @@ jobs:
       - name: Build changed packages + dependents
         env:
           PKGS: ${{ needs.check.outputs.packages }}
-        run: sudo -u builder bash github-ci/scripts/build_ci.sh
+        run: sudo -u builder -H env PKGS="$PKGS" bash github-ci/scripts/build_ci.sh
 
       - name: Upload artifacts (also kept as run artifacts)
         uses: actions/upload-artifact@v4
         with:
           name: packages
           path: dist/*.pkg.tar.zst
-          if-no-files-found: ignore
+          if-no-files-found: error
 
       - name: Publish pacman repo to 'packages' branch (Pages)
         env:
@@ -76,21 +76,24 @@ jobs:
           GH_REPO: ${{ github.repository }}
         run: |
             cd dist
-            if ! compgen -G '*.pkg.tar.zst' >/dev/null; then
-                echo "No packages built; nothing to publish."
-                exit 0
+            shopt -s nullglob
+            files=(./*.pkg.tar.zst)
+            shopt -u nullglob
+            if [[ ${#files[@]} -eq 0 ]]; then
+                echo "ERROR: no packages in dist; cannot publish release" >&2
+                exit 1
             fi
             gh release view latest >/dev/null 2>&1 || gh release create latest --title "Latest packages" --notes "Rolling release of locally built packages (git versions). Overwritten on every successful build. The authoritative pacman repo is the 'packages' branch / GitHub Pages."
             gh release upload latest ./*.pkg.tar.zst ./prince.db.tar.gz ./prince.files.tar.gz ./SHA256SUMS --clobber
 
       - name: Commit updated .upstream refs
         run: |
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            if [[ -n "$(git status --porcelain .upstream)" ]]; then
-                git add .upstream
-                git commit -m "chore: update upstream refs [skip ci]"
-                git push
+            sudo -u builder -H git -C "$GITHUB_WORKSPACE" config user.name "github-actions[bot]"
+            sudo -u builder -H git -C "$GITHUB_WORKSPACE" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            if [[ -n "$(sudo -u builder -H git -C "$GITHUB_WORKSPACE" status --porcelain -- .upstream)" ]]; then
+                sudo -u builder -H git -C "$GITHUB_WORKSPACE" add .upstream
+                sudo -u builder -H git -C "$GITHUB_WORKSPACE" commit -m "chore: update upstream refs [skip ci]"
+                sudo -u builder -H git -C "$GITHUB_WORKSPACE" push
             else
                 echo "No upstream ref changes to commit."
             fi
