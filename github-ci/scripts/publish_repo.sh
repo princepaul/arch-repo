@@ -88,7 +88,11 @@ for pkg in "${pkgs[@]}"; do
     cp -f "$pkg" ./
 done
 
-repo-add --remove --quiet "$REPO_NAME.db.tar.gz" ./*.pkg.tar.zst
+# (Re)build the repo db from scratch: the db is a pure projection of the
+# package files present, so this is rename-safe (a renamed pkgbase leaves no
+# ghost entry) and removal-safe (a package dropped from build-order vanishes).
+rm -f "$REPO_NAME.db.tar.gz" "$REPO_NAME.files.tar.gz"
+repo-add --quiet "$REPO_NAME.db.tar.gz" ./*.pkg.tar.zst
 
 # repo-add creates '<repo>.db' / '<repo>.files' as *symlinks* to the .tar.gz
 # files; replace them with real files so the branch is safe to serve over Pages.
