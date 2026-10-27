@@ -2,8 +2,8 @@ name: build-packages
 
 on:
   schedule:
-    # Every 6 hours (offset to avoid the busy top-of-hour GitHub window)
-    - cron: "23 */6 * * *"
+    # Daily at 22:22 UTC
+    - cron: "22 22 * * *"
   workflow_dispatch:
     inputs:
       package:
