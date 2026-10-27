@@ -76,13 +76,7 @@ jobs:
                 sudo pacman -U --noconfirm "${pks[@]}"
             fi
 
-            # pysassc (AUR python-libsass frontend) - used by mint-themes /
-            # mint-y-icons upstream scripts to regenerate theme CSS from scss.
-            python -m venv /opt/pysassc
-            /opt/pysassc/bin/pip install --quiet libsass
-            ln -sf /opt/pysassc/bin/pysassc /usr/local/bin/pysassc
-            /usr/local/bin/pysassc --version || {
-                echo "ERROR: pysassc fixture failed to install" >&2; exit 1; }
+
 
       - name: Build changed packages + dependents
         env:
