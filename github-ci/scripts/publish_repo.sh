@@ -32,19 +32,59 @@ pkgs=("$DIST_DIR_ABS"/*.pkg.tar.zst)
 shopt -u nullglob
 [[ ${#pkgs[@]} -gt 0 ]] || { echo "ERROR: No packages in $DIST_DIR; refusing to publish (empty build?)" >&2; exit 1; }
 
+# ---- 0. Stray-package guard ----
+# Only packages produced by the build-order sources may ever enter the repo.
+# Any .pkg.tar.zst not belonging to a build-order PKGBUILD (e.g. dropped on
+# the packages branch by hand) must not silently reach pacman users.
+REPO_ROOT="$(cd "$(dirname "$(readlink -f "$0")")/../.." && pwd)"
+[[ -f "$REPO_ROOT/build-order" ]] || { echo "ERROR: build-order not found at $REPO_ROOT" >&2; exit 1; }
+declare -A allowed_base=()
+while IFS= read -r dir; do
+    [[ -f "$REPO_ROOT/$dir/PKGBUILD" ]] || continue
+    # PKGBUILDs are sourced in a subshell exactly like makepkg does; only the
+    # variable definitions are needed (pkgname may be a scalar or an array).
+    for bn in $( (source "$REPO_ROOT/$dir/PKGBUILD" \
+                  && echo "${pkgname[*]}") 2>/dev/null ); do
+        allowed_base["$bn"]=1
+    done
+done < <(while IFS= read -r bl; do
+             d="$(echo "$bl" | sed 's/#.*//' | xargs 2>/dev/null || true)"
+             [[ -n "$d" ]] && printf '%s\n' "$d"
+         done < "$REPO_ROOT/build-order")
+strays=()
+for pkg in "${pkgs[@]}"; do
+    base="$(bsdtar -xOf "$pkg" .PKGINFO | awk '$1 == "pkgbase" {print $3}')" || base=""
+    if [[ -z "$base" ]]; then
+        strays+=("$(basename "$pkg") (unreadable/empty pkgbase - not a valid package?)")
+    elif [[ -z "${allowed_base[$base]:-}" ]]; then
+        strays+=("$(basename "$pkg") (pkgbase='$base')")
+    fi
+done
+if [[ ${#strays[@]} -gt 0 ]]; then
+    echo "ERROR: refusing to publish unapproved package file(s) in $DIST_DIR:" >&2
+    printf '  %s\n' "${strays[@]}" >&2
+    echo "These bases are not produced by any build-order PKGBUILD. A stray/" >&2
+    echo "tampered artifact found its way into the DIST_DIR or DIST_DIR itself" >&2
+    echo "was pointed at the wrong directory. Aborting (nothing published)." >&2
+    exit 1
+fi
+
 # ---- 1. Get a checkout of the packages branch ----
 work="${LOCAL_REPO_DIR:-}"
 if [[ -z "$work" ]]; then
     [[ -n "${GH_TOKEN:-}" && -n "${GH_REPO:-}" ]] || { echo "GH_TOKEN/GH_REPO not set and no LOCAL_REPO_DIR given" >&2; exit 1; }
-    url="https://x-access-token:${GH_TOKEN}@github.com/${GH_REPO}.git"
+    # Clone anonymously: the repo is public, and the read side needs no
+    # credentials. Auth is applied per-push (below) via a one-shot header so
+    # the token is never written to disk in the clone's .git/config.
+    anon="https://github.com/${GH_REPO}.git"
     work="$(mktemp -d)"
-    git_branch_exists="$(git ls-remote --heads "$url" "$BRANCH" | head -n1 || true)"
+    git_branch_exists="$(git ls-remote --heads "$anon" "$BRANCH" | head -n1 || true)"
     if [[ -n "$git_branch_exists" ]]; then
-        git clone --branch "$BRANCH" --single-branch --depth 1 "$url" "$work"
+        git clone --branch "$BRANCH" --single-branch --depth 1 "$anon" "$work"
     else
         # First publication: create the branch from the default branch,
         # then wipe it.
-        git clone --depth 1 "$url" "$work"
+        git clone --depth 1 "$anon" "$work"
         ( cd "$work" \
             && git checkout --orphan "$BRANCH" \
             && find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} + )
@@ -190,7 +230,11 @@ else
     if [[ "$NO_PUSH" == true ]]; then
         echo "--no-push: skipping push."
     else
-        git push origin "HEAD:refs/heads/$BRANCH"
+        # Auth per-command via header: the token never lands in .git/config
+        # (the clone was done anonymously; this remote carries no credentials).
+        AUTH="$(printf 'x-access-token:%s' "${GH_TOKEN:-}" | base64 -w0)"
+        git -c "http.extraHeader=Authorization: Basic $AUTH" \
+            push origin "HEAD:refs/heads/$BRANCH"
     fi
 fi
 

@@ -29,7 +29,8 @@ jobs:
       has_changes: ${{ steps.check.outputs.has_changes }}
       packages: ${{ steps.check.outputs.packages }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        persist-credentials: false
       - id: check
         env:
           FORCE_ALL: ${{ inputs.force_all || 'false' }}
@@ -52,7 +53,8 @@ jobs:
             useradd -m builder
             echo 'builder ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/builder
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        persist-credentials: false
 
       - name: Hand the workspace to builder
         run: chown -R builder:builder .
@@ -86,7 +88,7 @@ jobs:
         run: sudo -u builder -H env PKGS="$PKGS" bash github-ci/scripts/build_ci.sh
 
       - name: Upload artifacts (also kept as run artifacts)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: packages
           path: dist/*.pkg.tar.zst
@@ -116,6 +118,8 @@ jobs:
 
       - name: Commit updated .upstream refs
         if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
             test "$(sudo -u builder -H git rev-parse --show-toplevel)" = "$PWD" || {
                 echo "ERROR: cwd is not the workspace top-level: $(pwd)" >&2; exit 1; }
@@ -124,7 +128,12 @@ jobs:
             if [[ -n "$(sudo -u builder -H git status --porcelain -- .upstream)" ]]; then
                 sudo -u builder -H git add .upstream
                 sudo -u builder -H git commit -m "chore: update upstream refs [skip ci]"
-                sudo -u builder -H git push
+                # push via a per-command Authorization header: the token is
+                # never persisted into the workspace .git/config (persisted
+                # checkout credentials are disabled).
+                AUTH="$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)"
+                git -c "http.extraHeader=Authorization: Basic $AUTH" \
+                    push origin "HEAD:refs/heads/main"
             else
                 echo "No upstream ref changes to commit."
             fi
