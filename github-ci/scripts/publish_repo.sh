@@ -44,7 +44,7 @@ while IFS= read -r dir; do
     # PKGBUILDs are sourced in a subshell exactly like makepkg does; only the
     # variable definitions are needed (pkgname may be a scalar or an array).
     for bn in $( (source "$REPO_ROOT/$dir/PKGBUILD" \
-                  && echo "${pkgname[*]}") 2>/dev/null ); do
+                  && echo "${pkgbase:-$pkgname}" ${pkgname[*]}) 2>/dev/null ); do
         allowed_base["$bn"]=1
     done
 done < <(while IFS= read -r bl; do
