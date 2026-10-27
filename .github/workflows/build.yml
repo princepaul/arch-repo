@@ -128,8 +128,10 @@ jobs:
                 # never persisted into the workspace .git/config (persisted
                 # checkout credentials are disabled).
                 AUTH="$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)"
-                git -c "http.extraHeader=Authorization: Basic $AUTH" \
-                    push origin "HEAD:refs/heads/main"
+                sudo -u builder env AUTH="$AUTH" bash -c '
+                    git -c "http.extraHeader=Authorization: Basic $AUTH" \
+                        push origin "HEAD:refs/heads/main"
+                '
             else
                 echo "No upstream ref changes to commit."
             fi
