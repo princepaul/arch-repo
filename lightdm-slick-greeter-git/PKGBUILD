@@ -11,8 +11,8 @@ arch=('x86_64')
 url="https://github.com/linuxmint/slick-greeter"
 license=('GPL-3.0-only')
 options=('!debug')
-provides=("${_pkgname}" 'slick-greeter')
-conflicts=("${_pkgname}" 'slick-greeter')
+provides=('slick-greeter')
+conflicts=('slick-greeter')
 depends=('cairo' 'freetype2' 'gtk3' 'libcanberra' 'libxext' 'lightdm' 'pixman'
          'python' 'xapp')
 optdepends=('numlockx: enable numerical keypad on supported keyboard')

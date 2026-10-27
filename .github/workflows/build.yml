@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       package:
-        description: "Package dir to build (+ its dependents), e.g. nemo-git. Empty = check upstream for changes."
+        description: "Package dir(s) to build exactly as listed, comma-separated, e.g. nemo-git or slick-greeter,arena-git. Ignored if force_all is set."
         required: false
         default: ""
       force_all:

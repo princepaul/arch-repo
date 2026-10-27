@@ -8,8 +8,6 @@ pkgdesc='A configuration tool for the LightDM display manager – git'
 arch=('any')
 url="https://github.com/linuxmint/${_pkgname}"
 license=('GPL-3.0-only')
-provides=("${_pkgname}")
-conflicts=("${_pkgname}")
 depends=(
     hicolor-icon-theme
     lightdm-slick-greeter

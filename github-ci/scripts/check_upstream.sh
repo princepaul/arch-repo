@@ -47,17 +47,23 @@ include=()
 if [[ "${FORCE_ALL:-false}" == "true" ]]; then
     include=("${all_pkgs[@]}")
 elif [[ -n "${SINGLE_PACKAGE:-}" ]]; then
-    # Manual dispatch: target package plus everything after it in build-order.
-    found=false
-    for dir in "${all_pkgs[@]}"; do
-        if [[ "$found" == false && "$dir" == "$SINGLE_PACKAGE" ]]; then
-            found=true
-        fi
-        [[ "$found" == true ]] && include+=("$dir")
+    # Manual dispatch: comma/space separated package list -> build exactly
+    # these (the old single-name behavior of including the whole build-order
+    # tail can still be had by using force_all or by passing one name while
+    # the others are considered done).
+    declare -A wanted=()
+    for w in ${SINGLE_PACKAGE//,/ }; do
+        wanted["$w"]=1
     done
-    if [[ "$found" == false ]]; then
-        echo "Package '$SINGLE_PACKAGE' not found in build-order" >&2
-        exit 1
+    for dir in "${all_pkgs[@]}"; do
+        [[ -n "${wanted[$dir]:-}" ]] && include+=("$dir")
+    done
+    if [[ ${#include[@]} -ne ${#wanted[@]} ]]; then
+        for w in "${!wanted[@]}"; do
+            known=false
+            for dir in "${all_pkgs[@]}"; do [[ "$dir" == "$w" ]] && known=true && break; done
+            [[ "$known" == false ]] && { echo "Package '$w' not found in build-order" >&2; exit 1; }
+        done
     fi
 elif [[ ${#changed[@]} -gt 0 ]]; then
     # Earliest changed index -> end of build-order.
