@@ -7,7 +7,7 @@
 # Contributor: Prince Paul <prince.paul.k@gmail.com>
 
 pkgname=cinnamon
-pkgver=6.7.9.unstable.r12.g1e9c44cb1
+pkgver=6.7.9.unstable.r25.gd67b361f9
 pkgrel=1
 pkgdesc='Desktop environment which provides advanced innovative features and a traditional user experience'
 arch=(x86_64)
@@ -91,9 +91,8 @@ makedepends=(
   gobject-introspection
   gtk-doc
   gtk4
-  gtk4-layer-shell
   meson
-  sassc
+  python-libsass
 )
 conflicts=("caribou<=0.4.21+75+g8ad9883-8")
 options=('!emptydirs' '!debug')
@@ -104,17 +103,15 @@ source=(git+${url}.git
   cinnamon.css
   toggle-on.svg
   toggle-off.svg
-  add_decls.patch
         )
 
 b2sums=('SKIP'
-        'SKIP'
-        'SKIP'
-        'SKIP'
-        'SKIP'
-        'SKIP'
-        'SKIP'
-        'SKIP')
+        '716095bf9b74fad22714040dfd3d7b115eb950a81b4ec809f8541d81102bc276532948d1e70c2d022b061cc8e939276b9f51f4fedb01c6ef2940d1232253460d'
+        '3becf1f40068fc629109e6e7d464c3c484296afacc9ab6328b2ccbb3c9735bcbfa9550f9f73b430ede178ae668e37c660ce322b5b4d1873526de3d3d41185160'
+        'c071ce664c5189883c409d65b1d054ef4526c0283484e936b10500cec13efdaf3e3792459e648817e1c48e0505bc1154950ce3080cd9aafe0f5de8da5b16bafd'
+        '188dd4335973eb22b75fb57d152e1629e593dbd132055b219ac5b3d59e5a98aeda70bc94d7516e2bf26a61444687bc6b2e478d7b0cd05f621c0abdacba58ab3b'
+        'e4fc6909045b71a75c1162b368dc13549aefd92bd16033ecabcf97bd6f12ad8e9479c51ba0a5727151e61c64c1ae6087d26a88e74d5a9d53134cae084a9004d3'
+        'c19f8b6a8c86e895b8e1f6adc148370ec07597aed93e5af4a43ed53f928f8c6afc7700ba9cbdd85703c74469a5fa41125c234bb261413e99c597fea2c62e31ba')
 
 pkgver() {
     cd "${srcdir}"/${pkgname}
@@ -136,8 +133,8 @@ prepare() {
   sed -i 's|/usr/share/cinnamon-background-properties|/usr/share/gnome-background-properties|' \
     files/usr/share/cinnamon/cinnamon-settings/modules/cs_backgrounds.py
 
-  # Don't hide any valid themes from the list
-  sed -i '/if .* in THEMES_BLACKLIST:/,+1 d' files/usr/share/cinnamon/cinnamon-settings/modules/cs_themes.py
+  # Upstream no longer hides valid themes via THEMES_BLACKLIST (dead sed removed)
+
 }
 
 build() {
