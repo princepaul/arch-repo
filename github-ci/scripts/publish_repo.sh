@@ -102,25 +102,24 @@ fi
 
 # ---- 2. Replace superseded versions of the built pkgbases ----
 declare -A bases_seen=()
+declare -A new_names=()
 for pkg in "${pkgs[@]}"; do
     base="$(bsdtar -xOf "$pkg" .PKGINFO | awk '$1 == "pkgbase" {print $3}')" || {
         echo "ERROR: bsdtar -xOf failed on $pkg (is bsdtar installed?)" >&2; exit 1; }
     [[ -n "$base" ]] || { echo "ERROR: could not read pkgbase from $pkg" >&2; exit 1; }
     bases_seen["$base"]=1
+    new_names["$(basename "$pkg")"]=1
 done
-for base in "${!bases_seen[@]}"; do
-    for old in ./"${base}"-*.pkg.tar.zst; do
-        [[ -e "$old" ]] || continue
-        name="$(basename "$old")"
-        skip=false
-        for pkg in "${pkgs[@]}"; do
-            [[ "$(basename "$pkg")" == "$name" ]] && skip=true
-        done
-        if [[ "$skip" == false ]]; then
-            echo "Removing superseded $name"
-            rm -f "$old"
-        fi
-    done
+for old in ./*.pkg.tar.zst; do
+    [[ -e "$old" ]] || continue
+    old_name="$(basename "$old")"
+    [[ -n "${new_names[$old_name]:-}" ]] && continue
+    
+    old_base="$(bsdtar -xOf "$old" .PKGINFO | awk '$1 == "pkgbase" {print $3}')" || continue
+    if [[ -n "${bases_seen[$old_base]:-}" ]]; then
+        echo "Removing superseded $old_name"
+        rm -f "$old"
+    fi
 done
 
 # ---- 3. Copy in the new packages and (re)build the repo db ----
