@@ -141,6 +141,21 @@ prepare() {
   for f in $(grep -rl "clutter_actor_allocate_align_fill" src/ 2>/dev/null); do
     perl -0777 -pi -e 's/(clutter_actor_allocate_align_fill\s*\(.*?)(\);)/$1, CLUTTER_ALLOCATION_NONE$2/gs' "$f"
   done
+  # Fix allocate function signatures to accept flags parameter
+  python3 - <<'PYEOF'
+import re, glob
+files = glob.glob('src/st/*.c') + glob.glob('src/cinnamon-*.c')
+for path in files:
+    with open(path) as f:
+        src = f.read()
+    src = re.sub(
+        r'(const ClutterActorBox \*\s*(?:box|content_box|childbox))\)',
+        r'\1, ClutterAllocationFlags flags)',
+        src
+    )
+    with open(path, 'w') as f:
+        f.write(src)
+PYEOF
 
   # Upstream no longer hides valid themes via THEMES_BLACKLIST (dead sed removed)
 
