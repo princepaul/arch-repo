@@ -92,6 +92,7 @@ makedepends=(
   gtk-doc
   gtk4
   meson
+  perl
   sassc
 )
 conflicts=("caribou<=0.4.21+75+g8ad9883-8")
@@ -132,6 +133,14 @@ prepare() {
   # https://github.com/linuxmint/cinnamon/issues/3575#issuecomment-374887122
   sed -i 's|/usr/share/cinnamon-background-properties|/usr/share/gnome-background-properties|' \
     files/usr/share/cinnamon/cinnamon-settings/modules/cs_backgrounds.py
+
+  # Fix Clutter 1.46+ API changes (set_allocation and allocate_align_fill now require flags)
+  for f in $(grep -rl "clutter_actor_set_allocation" src/ 2>/dev/null); do
+    sed -i 's/clutter_actor_set_allocation (\([^)]*\));/clutter_actor_set_allocation (\1, CLUTTER_ALLOCATION_NONE);/g' "$f"
+  done
+  for f in $(grep -rl "clutter_actor_allocate_align_fill" src/ 2>/dev/null); do
+    perl -0777 -pi -e 's/(clutter_actor_allocate_align_fill\s*\(.*?)(\);)/$1, CLUTTER_ALLOCATION_NONE$2/gs' "$f"
+  done
 
   # Upstream no longer hides valid themes via THEMES_BLACKLIST (dead sed removed)
 
