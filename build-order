@@ -14,7 +14,7 @@ xapp-symbolic-icons-git
 xapp-git
 xdg-desktop-portal-xapp-git
 # install
-# cinnamon-git   # temporarily disabled: upstream st toolkit incompatible with Clutter 1.46+ (set_allocation, allocate, paint API changes)
+cinnamon-git
 nemo-git
 # install
 python-xapp-git
