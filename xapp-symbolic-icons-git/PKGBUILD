@@ -1,7 +1,7 @@
 # Maintainer: Prince Paul <prince dot paul dot k @ gmail dot com>
 
-pkgname=xapp-symbolic-icons-git
-pkgver=1.1.0.r0.g2c91ca1
+pkgname=xapp-symbolic-icons
+pkgver=1.1.1.r0.g6ff2e6b
 pkgrel=1
 pkgdesc='Symbolic icons for XApp project (git version)'
 arch=(any)
@@ -10,7 +10,7 @@ license=('GPL-2.0-only')
 
 makedepends=(git meson)
 
-provides=("${pkgname%-git}")
+provides=("${pkgname%}")
 conflicts=("${pkgname%-git}")
 
 options=('!debug')
