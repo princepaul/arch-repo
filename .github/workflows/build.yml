@@ -80,6 +80,8 @@ jobs:
             # mint-y-icons upstream scripts to regenerate theme CSS from scss.
             # base-devel does not include python, so install it first.
             sudo pacman -S --noconfirm python python-pip
+            sudo mkdir -p /opt/pysassc
+            sudo chown builder:builder /opt/pysassc
             sudo -u builder -H python -m venv /opt/pysassc
             sudo /opt/pysassc/bin/pip install --quiet libsass
             sudo ln -sf /opt/pysassc/bin/pysassc /usr/local/bin/pysassc
