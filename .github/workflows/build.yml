@@ -50,6 +50,11 @@ jobs:
       # commits find no git repository.
       - name: Prepare container (git first, build user, deps)
         run: |
+            # Configure [prince] repo so previously-published packages are available
+            # as installed dependencies for incremental builds (avoids full rebuilds)
+            echo "[prince]" >> /etc/pacman.conf
+            echo "SigLevel = Never" >> /etc/pacman.conf
+            echo "Server = https://princepaul.github.io/arch-repo/" >> /etc/pacman.conf
             pacman -Syu --noconfirm git sudo github-cli zstd
             useradd -m builder
             echo 'builder ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/builder
