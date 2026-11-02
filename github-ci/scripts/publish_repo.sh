@@ -34,15 +34,11 @@ shopt -u nullglob
 
 # ---- 0. Stray-package guard ----
 # Only packages produced by the build-order sources may ever enter the repo.
-# Any .pkg.tar.zst not belonging to a build-order PKGBUILD (e.g. dropped on
-# the packages branch by hand) must not silently reach pacman users.
 REPO_ROOT="$(cd "$(dirname "$(readlink -f "$0")")/../.." && pwd)"
 [[ -f "$REPO_ROOT/build-order" ]] || { echo "ERROR: build-order not found at $REPO_ROOT" >&2; exit 1; }
 declare -A allowed_base=()
 while IFS= read -r dir; do
     [[ -f "$REPO_ROOT/$dir/PKGBUILD" ]] || continue
-    # PKGBUILDs are sourced in a subshell exactly like makepkg does; only the
-    # variable definitions are needed (pkgname may be a scalar or an array).
     for bn in $( (source "$REPO_ROOT/$dir/PKGBUILD" \
                   && echo "${pkgbase:-$pkgname}" ${pkgname[*]}) 2>/dev/null ); do
         allowed_base["$bn"]=1
@@ -114,7 +110,7 @@ for old in ./*.pkg.tar.zst; do
     [[ -e "$old" ]] || continue
     old_name="$(basename "$old")"
     [[ -n "${new_names[$old_name]:-}" ]] && continue
-    
+
     old_base="$(bsdtar -xOf "$old" .PKGINFO | awk '$1 == "pkgbase" {print $3}')" || continue
     if [[ -n "${bases_seen[$old_base]:-}" ]]; then
         echo "Removing superseded $old_name"
@@ -140,7 +136,6 @@ cp -f "$REPO_NAME.db.tar.gz" "$REPO_NAME.db"
 cp -f "$REPO_NAME.files.tar.gz" "$REPO_NAME.files"
 touch .nojekyll
 
-
 # ---- 4. Mirror db files + checksums back into DIST_DIR for the release ----
 cp -f "$REPO_NAME.db.tar.gz" "$REPO_NAME.files.tar.gz" "$DIST_DIR_ABS/"
 
@@ -155,17 +150,18 @@ rm -f "$REPO_NAME.db.tar.gz.old" "$REPO_NAME.files.tar.gz.old"
 # ---- 4b. Generate index.html (human-readable repo landing page) ----
 rows_tmp="$(mktemp)"
 for pkgfile in ./*.pkg.tar.zst; do
-    bsdtar -xOf "$pkgfile" .PKGINFO \
-        | awk -F' = ' '
-            $1=="pkgname"    {name=$2}
-            $1=="pkgver"     {ver=$2}
-            $1=="pkgdesc"    {desc=$2}
-            $1=="pkgbase"    {base=$2}
-            END {
-                printf "%s\t%s\t%s\n",
-                    name, ver, (desc=="" ? (base=="" ? name : base) : desc)
-            }' \
-        >> "$rows_tmp"
+    info="$(bsdtar -xOf "$pkgfile" .PKGINFO)"
+    name=$(echo "$info"    | awk -F' = ' '$1=="pkgname"    {print $2; exit}')
+    ver=$(echo "$info"     | awk -F' = ' '$1=="pkgver"     {print $2; exit}')
+    desc=$(echo "$info"   | awk -F' = ' '$1=="pkgdesc"    {print $2; exit}')
+    base=$(echo "$info"   | awk -F' = ' '$1=="pkgbase"    {print $2; exit}')
+    bdate=$(echo "$info"  | awk -F' = ' '$1=="builddate"  {print $2; exit}')
+    if [[ -n "$bdate" ]]; then
+        buildtime=$(date -u -d "@$bdate" '+%Y-%m-%d %H:%M' 2>/dev/null || echo "$bdate")
+    else
+        buildtime="-"
+    fi
+    printf "%s\t%s\t%s\t%s\t%s\n" "$name" "$ver" "${desc:-${base:-$name}}" "$buildtime" "$bdate" >> "$rows_tmp"
 done
 sort -u "$rows_tmp" -o "$rows_tmp"
 
@@ -182,7 +178,10 @@ sort -u "$rows_tmp" -o "$rows_tmp"
         'pre{padding:1em;overflow-x:auto;line-height:1.45}' \
         'table{border-collapse:collapse;width:100%;background:#fff;font-size:.9rem}' \
         'th,td{border:1px solid #d0d7de;padding:.35rem .6rem;text-align:left}' \
-        'th{background:#dbe5f2}td:nth-child(2){white-space:nowrap}' \
+        'th{background:#dbe5f2;cursor:pointer;user-select:none}' \
+        'th:hover{background:#c8d8ea}' \
+        'td:nth-child(2){white-space:nowrap}' \
+        'td:nth-child(5){white-space:nowrap;font-size:.85rem;color:#57606a}' \
         'footer{margin-top:1.5rem;color:#57606a;font-size:.8rem}' \
         '</style></head><body>' \
         '<h1>Arch user repository <code>[prince]</code></h1>' \
@@ -193,24 +192,49 @@ sort -u "$rows_tmp" -o "$rows_tmp"
         'SigLevel = Never' \
         'Server = https://princepaul.github.io/arch-repo/</pre>' \
         '<p>Then run <code>pacman -Syu</code> and install packages as usual.</p>' \
-        '<h2>Packages</h2>'
-    } > index.html
+        '<h2>Packages</h2>' \
+        '<p style="font-size:.85rem;color:#57606a">Click a column header to sort. Default: alphabetical.</p>'
+} > index.html
 
 awk -F'\t' '
     BEGIN {
-        print "<table><tr><th>#</th><th>Package</th><th>Version</th><th>Description</th></tr>"
+        print "<table id=\"pkgtable\"><thead><tr><th onclick=\"sortTable(0)\">#</th><th onclick=\"sortTable(1)\">Package</th><th onclick=\"sortTable(2)\">Version</th><th>Description</th><th onclick=\"sortTable(4)\">Build Date (UTC)</th></tr></thead><tbody>"
         n=0
     }
     {
         n++
-        printf "<tr><td>%d</td><td>%s</td><td>%s</td><td>%s</td></tr>\n", n, $1, $2, $3
+        printf "<tr><td data-sort=\"%d\">%d</td><td data-sort=\"%s\">%s</td><td data-sort=\"%s\">%s</td><td>%s</td><td data-sort=\"%s\">%s</td></tr>\n", n, n, $1, $1, $2, $2, $3, $5, $4
     }
     END {
-        print "</table>"
+        print "</tbody></table>"
         printf "<footer>Generated %s UTC &middot; %d packages &middot; repository db: <a href=\"prince.db\">prince.db</a></footer>\n", strftime("%Y-%m-%d %H:%M"), n
     }' "$rows_tmp" >> index.html
 
-if grep -q '<table>' index.html && grep -q '</table>' index.html; then
+# Client-side column sort (click header to toggle)
+cat >> index.html <<'JSEOF'
+<script>
+var sortDir = {};
+function sortTable(col) {
+    var table = document.getElementById('pkgtable');
+    var tbody = table.tBodies[0];
+    var rows = Array.from(tbody.rows);
+    sortDir[col] = !sortDir[col];
+    var asc = sortDir[col];
+    rows.sort(function(a, b) {
+        var va = a.cells[col].getAttribute('data-sort') || a.cells[col].textContent;
+        var vb = b.cells[col].getAttribute('data-sort') || b.cells[col].textContent;
+        if (va < vb) return asc ? -1 : 1;
+        if (va > vb) return asc ? 1 : -1;
+        return 0;
+    });
+    rows.forEach(function(r) { tbody.appendChild(r); });
+    rows.forEach(function(r, i) { r.cells[0].textContent = i + 1; });
+}
+</script>
+</body></html>
+JSEOF
+
+if grep -q '<table' index.html && grep -q '</table>' index.html; then
     echo "index.html generated: $(grep -c '<tr>' index.html) rows"
 else
     echo "ERROR: index.html generation failed" >&2
