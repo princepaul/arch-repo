@@ -52,10 +52,18 @@ jobs:
         run: |
             # Configure [prince] repo so previously-published packages are available
             # as installed dependencies for incremental builds (avoids full rebuilds)
-            echo "[prince]" >> /etc/pacman.conf
-            echo "SigLevel = Never" >> /etc/pacman.conf
-            echo "Server = https://princepaul.github.io/arch-repo/" >> /etc/pacman.conf
+            # Put [prince] FIRST so pacman prefers our packages over official repos
+            {
+                echo "[prince]"
+                echo "SigLevel = Never"
+                echo "Server = https://princepaul.github.io/arch-repo/"
+                echo ""
+                cat /etc/pacman.conf
+            } > /tmp/pacman.conf.new
+            mv /tmp/pacman.conf.new /etc/pacman.conf
             pacman -Syu --noconfirm git sudo github-cli zstd
+            # Install all [prince] packages so makepkg --syncdeps finds them
+            pacman -S --noconfirm --needed $(pacman -Slq prince 2>/dev/null) 2>/dev/null || true
             useradd -m builder
             echo 'builder ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/builder
 
