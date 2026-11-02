@@ -155,9 +155,51 @@ jobs:
                 AUTH="$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)"
                 sudo -u builder env AUTH="$AUTH" bash -c '
                     cd "'"$WS"'"
+                    git pull --rebase -q 2>/dev/null || true
                     git -c "http.extraHeader=Authorization: Basic $AUTH" \
                         push origin "HEAD:refs/heads/main"
                 '
             else
                 echo "No upstream ref changes to commit."
             fi
+
+  cleanup:
+    name: Cleanup old workflow runs
+    needs: build
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete runs older than the latest successful build
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          BUILD_RESULT: ${{ needs.build.result }}
+        run: |
+            if [[ "$BUILD_RESULT" != "success" ]]; then
+                echo "Build result: $BUILD_RESULT -- keeping all runs for analysis."
+                exit 0
+            fi
+
+            current_id="${{ github.run_id }}"
+            echo "Build succeeded. Cleaning up old runs (keeping current: $current_id)..."
+
+            mapfile -t run_ids < <(gh api "repos/${GH_REPO}/actions/runs?per_page=100" \
+                --jq '.workflow_runs | sort_by(.created_at) | reverse | .[].id')
+
+            latest_success=$(gh api "repos/${GH_REPO}/actions/runs?per_page=100" \
+                --jq '[.workflow_runs[] | select(.conclusion == "success")] | sort_by(.created_at) | last | .id')
+
+            echo "Latest successful run: $latest_success"
+
+            deleted=0
+            for rid in "${run_ids[@]}"; do
+                if [[ "$rid" == "$current_id" || "$rid" == "$latest_success" ]]; then
+                    echo "  Keep: $rid"
+                    continue
+                fi
+                echo "  Delete: $rid"
+                gh api -X DELETE "repos/${GH_REPO}/actions/runs/$rid" >/dev/null 2>&1 || true
+                deleted=$((deleted + 1))
+            done
+
+            echo "Deleted $deleted old run(s)."
