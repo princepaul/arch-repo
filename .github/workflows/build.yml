@@ -129,7 +129,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
-            cd dist
+            cd "${GITHUB_WORKSPACE}/dist"
             shopt -s nullglob
             files=(./*.pkg.tar.zst)
             shopt -u nullglob
@@ -145,18 +145,16 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-            test "$(sudo -u builder -H git rev-parse --show-toplevel)" = "$PWD" || {
-                echo "ERROR: cwd is not the workspace top-level: $(pwd)" >&2; exit 1; }
+            WS="${GITHUB_WORKSPACE}"
+            cd "$WS"
             sudo -u builder -H git config user.name "github-actions[bot]"
             sudo -u builder -H git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             if [[ -n "$(sudo -u builder -H git status --porcelain -- .upstream)" ]]; then
                 sudo -u builder -H git add .upstream
                 sudo -u builder -H git commit -m "chore: update upstream refs [skip ci]"
-                # push via a per-command Authorization header: the token is
-                # never persisted into the workspace .git/config (persisted
-                # checkout credentials are disabled).
                 AUTH="$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)"
                 sudo -u builder env AUTH="$AUTH" bash -c '
+                    cd "'"$WS"'"
                     git -c "http.extraHeader=Authorization: Basic $AUTH" \
                         push origin "HEAD:refs/heads/main"
                 '
