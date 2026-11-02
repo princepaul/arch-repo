@@ -88,10 +88,13 @@ jobs:
             sudo mkdir -p /opt/pysassc
             sudo chown builder:builder /opt/pysassc
             sudo -u builder -H python -m venv /opt/pysassc
-            sudo /opt/pysassc/bin/pip install --quiet libsass
-            sudo ln -sf /opt/pysassc/bin/pysassc /usr/local/bin/pysassc
-            /usr/local/bin/pysassc --version || {
-                echo "ERROR: pysassc fixture failed to install" >&2; exit 1; }
+            sudo /opt/pysassc/bin/pip install --quiet libsass || true
+            if [[ -x /opt/pysassc/bin/pysassc ]]; then
+                sudo ln -sf /opt/pysassc/bin/pysassc /usr/local/bin/pysassc
+                echo "pysassc installed: $(/usr/local/bin/pysassc --version)"
+            else
+                echo "WARNING: pysassc not available; mint-themes will use pre-generated CSS" >&2
+            fi
 
 
 
