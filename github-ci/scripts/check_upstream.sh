@@ -84,7 +84,9 @@ done
 # built, even when FORCE_ALL is requested (that input is retained for
 # compatibility but no longer triggers a full rebuild).
 include=()
-if [[ -n "${SINGLE_PACKAGE:-}" ]]; then
+if [[ "${FORCE_ALL:-false}" == "true" ]]; then
+    include=("${all_pkgs[@]}")
+elif [[ -n "${SINGLE_PACKAGE:-}" ]]; then
     # Manual dispatch: comma/space separated package list -> build exactly
     # these (the old single-name behavior of including the whole build-order
     # tail can still be had by using force_all or by passing one name while
@@ -128,9 +130,13 @@ if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
     {
         echo "has_changes=$has_changes"
         if [[ ${#include[@]} -gt 0 ]]; then
-            echo "packages<<EOF"
-            printf '%s\n' "${include[@]}"
-            echo "EOF"
+            if [[ "${FORCE_ALL:-false}" == "true" ]]; then
+                echo "packages=all"
+            else
+                echo "packages<<EOF"
+                printf '%s\n' "${include[@]}"
+                echo "EOF"
+            fi
         fi
     } >> "$GITHUB_OUTPUT"
 fi
@@ -157,4 +163,8 @@ if [[ -n "${GITHUB_STEP_SUMMARY:-}" ]]; then
 fi
 
 # stdout for humans / local use
-for d in "${include[@]:-}"; do echo "$d"; done
+if [[ "${FORCE_ALL:-false}" == "true" ]]; then
+    echo "all"
+else
+    for d in "${include[@]:-}"; do echo "$d"; done
+fi
