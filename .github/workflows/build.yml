@@ -165,11 +165,27 @@ jobs:
                 sudo -u builder -H git add .upstream
                 sudo -u builder -H git commit -m "chore: update upstream refs [skip ci]"
                 AUTH="$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)"
-                sudo -u builder env AUTH="$AUTH" bash -c '
-                    cd "'"$WS"'"
-                    git pull --rebase -q 2>/dev/null || true
-                    git -c "http.extraHeader=Authorization: Basic $AUTH" \
-                        push origin "HEAD:refs/heads/main"
+                sudo -u builder env AUTH="$AUTH" WS="$WS" bash -c '
+                    cd "$WS"
+                    for attempt in 1 2 3 4 5; do
+                        echo "Push attempt $attempt..."
+                        git fetch origin main 2>/dev/null || true
+                        if git rebase origin/main >/dev/null 2>&1; then
+                            if git -c "http.extraHeader=Authorization: Basic $AUTH" \
+                                push origin "HEAD:refs/heads/main"; then
+                                echo "Pushed upstream refs on attempt $attempt."
+                                exit 0
+                            fi
+                        else
+                            git rebase --abort >/dev/null 2>&1 || true
+                            echo "Rebase had conflicts; aborting this push (refs will retry next run)."
+                            exit 0
+                        fi
+                        echo "Push attempt $attempt failed; retrying..."
+                        sleep 2
+                    done
+                    echo "WARNING: could not push upstream refs after 5 attempts; will retry next run." >&2
+                    exit 0
                 '
             else
                 echo "No upstream ref changes to commit."
