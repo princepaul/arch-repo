@@ -108,26 +108,20 @@ elif [[ -n "${SINGLE_PACKAGE:-}" ]]; then
         done
     fi
 elif [[ ${#changed[@]} -gt 0 || ${#local_changed_dirs[@]} -gt 0 ]]; then
-    # Earliest changed/local index -> end of build-order.
-    earliest=""
-    for i in "${!all_pkgs[@]}"; do
-        matched=false
+    # Build only the packages that actually changed. Ordering is still taken
+    # from build-order, so dependencies are processed in the correct sequence.
+    for dir in "${all_pkgs[@]}"; do
+        is_changed=false
         for c in "${changed[@]:-}"; do
-            [[ "${all_pkgs[$i]}" == "$c" ]] && matched=true && break
+            [[ "$dir" == "$c" ]] && is_changed=true && break
         done
-        if [[ "$matched" == false ]]; then
+        if [[ "$is_changed" == false ]]; then
             for d in "${local_changed_dirs[@]:-}"; do
-                [[ "${all_pkgs[$i]}" == "$d" ]] && matched=true && break
+                [[ "$dir" == "$d" ]] && is_changed=true && break
             done
         fi
-        if [[ "$matched" == true ]]; then
-            if [[ -z "$earliest" || $i -lt $earliest ]]; then earliest=$i; fi
-        fi
+        [[ "$is_changed" == true ]] && include+=("$dir")
     done
-    if [[ -n "$earliest" ]]; then
-        mapfile -t tail < <(printf '%s\n' "${all_pkgs[@]:$earliest}")
-        include+=("${tail[@]}")
-    fi
 fi
 
 # ---- Emit outputs ----
