@@ -4,6 +4,14 @@ on:
   schedule:
     # Every 6 hours (offset to avoid the busy top-of-hour GitHub window)
     - cron: "23 */6 * * *"
+  push:
+    branches: [main]
+    paths:
+      - "*/PKGBUILD"
+      - "**/*.patch"
+      - "build-order"
+      - "github-ci/scripts/**"
+      - "github-ci/shims/**"
   workflow_dispatch:
     inputs:
       package:
@@ -32,10 +40,14 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           persist-credentials: false
+          fetch-depth: 0
       - id: check
         env:
           FORCE_ALL: ${{ inputs.force_all || 'false' }}
           SINGLE_PACKAGE: ${{ inputs.package || '' }}
+          EVENT_NAME: ${{ github.event_name }}
+          BEFORE_SHA: ${{ github.event.before || '' }}
+          CURRENT_SHA: ${{ github.sha }}
         run: bash github-ci/scripts/check_upstream.sh
 
   build:
