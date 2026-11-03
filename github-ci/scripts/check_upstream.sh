@@ -47,9 +47,9 @@ fi
 if [[ -n "$_paths" ]]; then
     while IFS= read -r p; do
         [[ -z "$p" ]] && continue
+        # Only actual package directories are eligible for automatic rebuilds.
+        # Infrastructure/metadata changes do not force a full build.
         case "$p" in
-            build-order) local_force_all=true ;;
-            github-ci/scripts/*|github-ci/common.sh|github-ci/shims/*) local_force_all=true ;;
             .upstream/*) ;;  # ref bookkeeping, never a reason to rebuild
             *)
                 dir="${p%%/*}"
@@ -79,16 +79,12 @@ for dir in "${all_pkgs[@]}"; do
     fi
 done
 
-# ---- Combine FORCE_ALL ----
-force_all=false
-[[ "${FORCE_ALL:-false}" == "true" ]] && force_all=true
-[[ "$local_force_all" == "true" ]] && force_all=true
-
 # ---- Compute the include list ----
+# Full "build all" runs are intentionally not used. ONLY changed packages are
+# built, even when FORCE_ALL is requested (that input is retained for
+# compatibility but no longer triggers a full rebuild).
 include=()
-if [[ "$force_all" == "true" ]]; then
-    include=("${all_pkgs[@]}")
-elif [[ -n "${SINGLE_PACKAGE:-}" ]]; then
+if [[ -n "${SINGLE_PACKAGE:-}" ]]; then
     # Manual dispatch: comma/space separated package list -> build exactly
     # these (the old single-name behavior of including the whole build-order
     # tail can still be had by using force_all or by passing one name while
@@ -132,13 +128,9 @@ if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
     {
         echo "has_changes=$has_changes"
         if [[ ${#include[@]} -gt 0 ]]; then
-            if [[ "$force_all" == "true" ]]; then
-                echo "packages=all"
-            else
-                echo "packages<<EOF"
-                printf '%s\n' "${include[@]}"
-                echo "EOF"
-            fi
+            echo "packages<<EOF"
+            printf '%s\n' "${include[@]}"
+            echo "EOF"
         fi
     } >> "$GITHUB_OUTPUT"
 fi
@@ -157,9 +149,6 @@ if [[ -n "${GITHUB_STEP_SUMMARY:-}" ]]; then
             echo "- Local push changed:"
             printf '  - `%s`\n' "${local_changed_dirs[@]}"
         fi
-        if [[ "$local_force_all" == "true" ]]; then
-            echo "- Local infra/build-order change -> full rebuild."
-        fi
         if [[ ${#include[@]} -gt 0 ]]; then
             echo "- Build list (${#include[@]}):"
             for d in "${include[@]}"; do echo "  - \`$d\`"; done
@@ -168,8 +157,4 @@ if [[ -n "${GITHUB_STEP_SUMMARY:-}" ]]; then
 fi
 
 # stdout for humans / local use
-if [[ "$force_all" == "true" ]]; then
-    echo "all"
-else
-    for d in "${include[@]:-}"; do echo "$d"; done
-fi
+for d in "${include[@]:-}"; do echo "$d"; done
