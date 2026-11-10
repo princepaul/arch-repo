@@ -121,7 +121,9 @@ jobs:
       - name: Build changed packages + dependents
         env:
           PKGS: ${{ needs.check.outputs.packages }}
-        run: sudo -u builder -H env PKGS="$PKGS" bash github-ci/scripts/build_ci.sh
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: sudo -u builder -H env PKGS="$PKGS" GH_TOKEN="$GH_TOKEN" GH_REPO="$GH_REPO" bash github-ci/scripts/build_ci.sh
 
       - name: Upload artifacts (also kept as run artifacts)
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
@@ -130,11 +132,11 @@ jobs:
           path: dist/*.pkg.tar.zst
           if-no-files-found: error
 
-      - name: Publish pacman repo to 'packages' branch (Pages)
+      - name: Prepare db files and checksums for release
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-        run: bash github-ci/scripts/publish_repo.sh
+        run: DIST_DIR="${GITHUB_WORKSPACE}/dist" bash github-ci/scripts/publish_repo.sh --no-push
 
       - name: Publish to rolling 'latest' release
         env:

@@ -4,13 +4,15 @@
 # Builds the packages listed in $PKGS (one directory name per line, or "all"),
 # following the order from the 'build-order' file. Built packages are installed
 # into the build environment (pacman -U) so later packages link against them,
-# and every artifacts (*.pkg.tar.zst) is copied into dist/.
+# and every artifact (*.pkg.tar.zst) is copied into dist/.
 #
 # Unlike build_install.sh it:
 #   - does not run repo_update / pacman -Syu (that is local-machine work)
 #   - records the upstream ref in .upstream/<pkg> after a SUCCESSFUL build only,
 #     so failed packages are retried on the next scheduled run
 #   - fails the whole run at the end if any package failed
+#   - publishes each package immediately after successful build + install,
+#     so the [prince] repo is updated incrementally and next run can install it
 #
 # Intended to run as a non-root user (makepkg refuses root); pacman -U is done
 # via passwordless sudo (configured by the CI workflow).
@@ -22,6 +24,9 @@ DIST_DIR="$PWD/dist"
 mkdir -p "$DIST_DIR"
 failures=()
 built_pkgs=()
+
+# Track packages that were successfully published (so we only record refs for those)
+published_pkgs=()
 
 # Custom makepkg config: debug packages are built on demand only.
 custom_makepkg_conf="$(mktemp)"
@@ -44,6 +49,34 @@ if [[ "$build_all" == false && ${#requested[@]} -eq 0 ]]; then
     echo "ERROR: PKGS is empty and build_all is false - nothing requested (CI env misconfigured)" >&2
     exit 1
 fi
+
+# ---- Publish a single package immediately ----
+publish_package() {
+    local pkg_file="$1"
+    local dir="$2"
+
+    echo "Publishing package: $(basename "$pkg_file")"
+
+    # Create a single-package staging directory
+    local stage_dir
+    stage_dir="$(mktemp -d)"
+    cp -p "$pkg_file" "$stage_dir/"
+
+    # Call publish_repo.sh on the staging directory
+    # It will clone the packages branch, replace superseded versions, rebuild db, push
+    if ! DIST_DIR="$stage_dir" \
+         GH_TOKEN="${GH_TOKEN:-}" \
+         GH_REPO="${GH_REPO:-}" \
+         bash github-ci/scripts/publish_repo.sh; then
+        echo "ERROR: publish_repo.sh failed for $(basename "$pkg_file")" >&2
+        rm -rf "$stage_dir"
+        return 1
+    fi
+
+    rm -rf "$stage_dir"
+    echo "Published successfully: $(basename "$pkg_file")"
+    return 0
+}
 
 # ---- Build one directory ----
 process_directory() {
@@ -90,14 +123,24 @@ process_directory() {
     # Install so later packages in build-order build against them
     sudo pacman -U --noconfirm --ask 4 --overwrite '*' "${built[@]}" || { failures+=("$dir"); return; }
 
-    # Collect artifacts
+    # Publish each package immediately after install
     local pkg
+    for pkg in "${built[@]}"; do
+        if ! publish_package "$pkg" "$dir"; then
+            failures+=("$dir")
+            return
+        fi
+        # Only record as published if publish succeeded
+        published_pkgs+=("$dir")
+    done
+
+    # Collect artifacts for final release upload
     for pkg in "${built[@]}"; do
         cp -p "$pkg" "$DIST_DIR/"
         built_pkgs+=("$(basename "$pkg")")
     done
 
-    # Record upstream ref only after a successful build
+    # Record upstream ref only after successful build AND publish
     local url ref
     url="$(get_pkg_url "$dir")"
     ref="$(get_head_ref "$url")"
