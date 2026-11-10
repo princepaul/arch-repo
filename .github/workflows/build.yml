@@ -213,20 +213,34 @@ jobs:
             current_id="${{ github.run_id }}"
             echo "Build succeeded. Cleaning up old runs (keeping only latest successful: $current_id)..."
 
-            # Only consider build-packages workflow runs (ignore pages-build-deployment etc.)
-            mapfile -t run_ids < <(gh api "repos/${GH_REPO}/actions/runs?per_page=100"  \
+            # Clean up build-packages runs
+            mapfile -t build_run_ids < <(gh api "repos/${GH_REPO}/actions/runs?per_page=100"  \
                 --jq '.workflow_runs[] | select(.workflow_id == 396611019) | sort_by(.created_at) | reverse | .id')
 
             # Keep only the current run (which is the latest successful), delete all others
             deleted=0
-            for rid in "${run_ids[@]}"; do
+            for rid in "${build_run_ids[@]}"; do
                 if [[ "$rid" == "$current_id" ]]; then
-                    echo "  Keep: $rid (current run)"
+                    echo "  Keep: $rid (current build-packages run)"
                     continue
                 fi
-                echo "  Delete: $rid"
+                echo "  Delete: $rid (build-packages)"
                 gh api -X DELETE "repos/${GH_REPO}/actions/runs/$rid" >/dev/null 2>&1 || true
                 deleted=$((deleted + 1))
             done
+
+            # Clean up pages-build-deployment runs (keep only latest)
+            mapfile -t pages_run_ids < <(gh api "repos/${GH_REPO}/actions/runs?per_page=100"  \
+                --jq '.workflow_runs[] | select(.workflow_name == "pages-build-deployment") | sort_by(.created_at) | reverse | .id')
+
+            if [[ ${#pages_run_ids[@]} -gt 0 ]]; then
+                latest_pages="${pages_run_ids[0]}"
+                echo "  Keeping latest pages-build-deployment: $latest_pages"
+                for rid in "${pages_run_ids[@]:1}"; do
+                    echo "  Delete: $rid (pages-build-deployment)"
+                    gh api -X DELETE "repos/${GH_REPO}/actions/runs/$rid" >/dev/null 2>&1 || true
+                    deleted=$((deleted + 1))
+                done
+            fi
 
             echo "Deleted $deleted old run(s)."
