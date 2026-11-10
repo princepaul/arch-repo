@@ -211,20 +211,17 @@ jobs:
             fi
 
             current_id="${{ github.run_id }}"
-            echo "Build succeeded. Cleaning up old runs (keeping current: $current_id)..."
+            echo "Build succeeded. Cleaning up old runs (keeping only latest successful: $current_id)..."
 
             # Only consider build-packages workflow runs (ignore pages-build-deployment etc.)
             mapfile -t run_ids < <(gh api "repos/${GH_REPO}/actions/runs?per_page=100"  \
                 --jq '.workflow_runs[] | select(.workflow_id == 396611019) | sort_by(.created_at) | reverse | .id')
 
-            latest_success=$(gh api "repos/${GH_REPO}/actions/runs?per_page=100"  \
-                --jq '[.workflow_runs[] | select(.workflow_id == 396611019 and .conclusion == "success")] | sort_by(.created_at) | last | .id')
-            echo "Latest successful run: $latest_success"
-
+            # Keep only the current run (which is the latest successful), delete all others
             deleted=0
             for rid in "${run_ids[@]}"; do
-                if [[ "$rid" == "$current_id" || "$rid" == "$latest_success" ]]; then
-                    echo "  Keep: $rid"
+                if [[ "$rid" == "$current_id" ]]; then
+                    echo "  Keep: $rid (current run)"
                     continue
                 fi
                 echo "  Delete: $rid"
