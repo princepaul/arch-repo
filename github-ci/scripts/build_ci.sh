@@ -24,6 +24,7 @@ DIST_DIR="$PWD/dist"
 mkdir -p "$DIST_DIR"
 failures=()
 built_pkgs=()
+built_dirs=()
 
 # Track packages that were successfully published (so we only record refs for those)
 published_pkgs=()
@@ -153,6 +154,9 @@ process_directory() {
         store_ref "$dir" "$ref"
     fi
 
+    # Track successfully built packages for ref update
+    built_dirs+=("$dir")
+
     echo "Build successful for $dir."
 }
 
@@ -198,4 +202,8 @@ if [[ ${#built_pkgs[@]} -eq 0 ]]; then
     echo "Nothing was built."
 fi
 
-echo "CI build script finished. Artifacts in $DIST_DIR"
+# Write built directories to file for API step
+    printf '%s
+' "${built_dirs[@]}" > "$DIST_DIR/.built_dirs"
+
+    echo "CI build script finished. Artifacts in $DIST_DIR"
