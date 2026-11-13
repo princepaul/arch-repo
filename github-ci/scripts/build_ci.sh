@@ -188,6 +188,11 @@ if [[ -n "${GITHUB_STEP_SUMMARY:-}" ]]; then
     } >> "$GITHUB_STEP_SUMMARY"
 fi
 
+# Write built directories to file for API step (before exit, so partial builds are tracked)
+if [[ ${#built_dirs[@]} -gt 0 ]]; then
+    printf '%s\n' "${built_dirs[@]}" > "$DIST_DIR/.built_dirs"
+fi
+
 if [[ ${#failures[@]} -gt 0 ]]; then
     echo "The following packages failed: ${failures[*]}" >&2
     exit 1
@@ -201,8 +206,5 @@ fi
 if [[ ${#built_pkgs[@]} -eq 0 ]]; then
     echo "Nothing was built."
 fi
-
-# Write built directories to file for API step
-printf '%s\n' "${built_dirs[@]}" > "$DIST_DIR/.built_dirs"
 
     echo "CI build script finished. Artifacts in $DIST_DIR"
