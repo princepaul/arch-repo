@@ -39,7 +39,7 @@ trap 'rm -f "$custom_makepkg_conf"' EXIT
 } > "$custom_makepkg_conf"
 
 # ---- Requested packages ----
-mapfile -t requested < <(printf "%s\n"\n' "${PKGS:-}" | sed '/^[[:space:]]*$/d')
+mapfile -t requested < <(printf '%s\n' "${PKGS:-}" | sed '/^[[:space:]]*$/d')
 build_all=false
 mapfile -t all_pkgs < <(read_build_order)
 if [[ ${#requested[@]} -eq 1 && "${requested[0]}" == "all" ]]; then
@@ -166,7 +166,7 @@ for dir in "${all_pkgs[@]}"; do
         process_directory "$dir"
         continue
     fi
-    if [[ ${#requested[@]} -gt 0 ]] && printf "%s\n"\n' "${requested[@]}" | grep -qx "$dir"; then
+    if [[ ${#requested[@]} -gt 0 ]] && printf '%s\n' "${requested[@]}" | grep -qx "$dir"; then
         process_directory "$dir"
     fi
 done
