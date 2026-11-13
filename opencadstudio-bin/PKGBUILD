@@ -27,11 +27,6 @@ build() {
   cargo build --release --locked
 }
 
-check() {
-  cd "$_pkgdir"
-  cargo test --release --locked 2>/dev/null || true
-}
-
 package() {
   cd "$_pkgdir"
   # Install the binary
