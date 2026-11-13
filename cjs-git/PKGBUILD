@@ -24,6 +24,7 @@ depends=(
 makedepends=(
   dbus
   git
+  glib2
   gobject-introspection
   meson
 )
