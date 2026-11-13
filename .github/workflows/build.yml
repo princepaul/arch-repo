@@ -233,16 +233,14 @@ jobs:
                     for attempt in 1 2 3 4 5; do
                         echo "Push attempt $attempt..."
                         git fetch origin main 2>/dev/null || true
-                        if git rebase origin/main >/dev/null 2>&1; then
+                        if git merge --no-edit origin/main 2>/dev/null || git merge --no-edit -X ours origin/main 2>/dev/null; then
                             if git -c "http.extraHeader=Authorization: Basic $AUTH" \
                                 push origin "HEAD:refs/heads/main"; then
                                 echo "Pushed upstream refs on attempt $attempt."
                                 exit 0
                             fi
                         else
-                            git rebase --abort >/dev/null 2>&1 || true
-                            echo "Rebase had conflicts; aborting this push (refs will retry next run)."
-                            exit 0
+                            echo "Merge failed; retrying..."
                         fi
                         echo "Push attempt $attempt failed; retrying..."
                         sleep 2
