@@ -172,7 +172,6 @@ jobs:
             fi
 
 
-
       - name: Build changed packages + dependents
         env:
           PKGS: ${{ needs.check.outputs.packages }}
@@ -215,42 +214,59 @@ jobs:
             gh release view latest >/dev/null 2>&1 || gh release create latest --title "Latest packages" --notes "Rolling release of locally built packages (git versions). Overwritten on every successful build. The authoritative pacman repo is the 'packages' branch / GitHub Pages."
             gh release upload latest ./*.pkg.tar.zst ./prince.db.tar.gz ./prince.files.tar.gz ./SHA256SUMS --clobber
 
-      - name: Commit updated .upstream refs
+      - name: Update .upstream refs via GitHub API
         if: always()
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
         run: |
             WS="${GITHUB_WORKSPACE}"
             cd "$WS"
-            sudo -u builder -H git config user.name "github-actions[bot]"
-            sudo -u builder -H git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            if [[ -n "$(sudo -u builder -H git status --porcelain -- .upstream)" ]]; then
-                sudo -u builder -H git add .upstream
-                sudo -u builder -H git commit -m "chore: update upstream refs [skip ci]"
-                AUTH="$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)"
-                sudo -u builder env AUTH="$AUTH" WS="$WS" bash -c '
-                    cd "$WS"
-                    for attempt in 1 2 3 4 5; do
-                        echo "Push attempt $attempt..."
-                        git fetch origin main 2>/dev/null || true
-                        if git merge --no-edit origin/main 2>/dev/null || git merge --no-edit -X ours origin/main 2>/dev/null; then
-                            if git -c "http.extraHeader=Authorization: Basic $AUTH" \
-                                push origin "HEAD:refs/heads/main"; then
-                                echo "Pushed upstream refs on attempt $attempt."
-                                exit 0
-                            fi
-                        else
-                            echo "Merge failed; retrying..."
-                        fi
-                        echo "Push attempt $attempt failed; retrying..."
-                        sleep 2
-                    done
-                    echo "WARNING: could not push upstream refs after 5 attempts; will retry next run." >&2
-                    exit 0
-                '
-            else
+            
+            # Find changed .upstream files
+            shopt -s nullglob
+            changed_files=()
+            for f in .upstream/*; do
+                [[ -f "$f" ]] && changed_files+=("$f")
+            done
+            shopt -u nullglob
+            
+            if [[ ${#changed_files[@]} -eq 0 ]]; then
                 echo "No upstream ref changes to commit."
+                exit 0
             fi
+            
+            echo "Updating ${#changed_files[@]} upstream refs via GitHub API..."
+            
+            for f in "${changed_files[@]}"; do
+                filename="$(basename "$f")"
+                content="$(cat "$f")"
+                encoded="$(printf '%s' "$content" | base64 -w0)"
+                
+                # Get current file SHA if exists
+                sha="$(gh api "repos/${GH_REPO}/contents/.upstream/${filename}?ref=main" --jq '.sha' 2>/dev/null || echo '')"
+                
+                if [[ -n "$sha" ]]; then
+                    # Update existing file
+                    gh api -X PUT "repos/${GH_REPO}/contents/.upstream/${filename}" \
+                        -f message="chore: update upstream ref for ${filename} [skip ci]" \
+                        -f content="$encoded" \
+                        -f sha="$sha" \
+                        -f branch=main \
+                        >/dev/null
+                    echo "  Updated: ${filename}"
+                else
+                    # Create new file
+                    gh api -X PUT "repos/${GH_REPO}/contents/.upstream/${filename}" \
+                        -f message="chore: add upstream ref for ${filename} [skip ci]" \
+                        -f content="$encoded" \
+                        -f branch=main \
+                        >/dev/null
+                    echo "  Created: ${filename}"
+                fi
+            done
+            
+            echo "All upstream refs updated via API."
 
   cleanup:
     name: Cleanup old workflow runs
@@ -299,7 +315,7 @@ jobs:
                     echo "  Delete: $rid (pages-build-deployment)"
                     gh api -X DELETE "repos/${GH_REPO}/actions/runs/$rid" >/dev/null 2>&1 || true
                     deleted=$((deleted + 1))
-                done
+                fi
             fi
 
             echo "Deleted $deleted old run(s)."
