@@ -31,7 +31,62 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # Promote staging to packages branch at start (for resume capability)
+  promote-staging:
+    name: Promote packages-staging → packages
+    runs-on: ubuntu-latest
+    outputs:
+      promoted: ${{ steps.promote.outputs.promoted }}
+    steps:
+      - name: Check if packages-staging exists and has changes
+        id: check_staging
+        run: |
+            # Check if packages-staging branch exists on remote
+            if git ls-remote --heads "https://github.com/${{ github.repository }}.git" "packages-staging" | grep -q packages-staging; then
+                echo "staging_exists=true" >> "$GITHUB_OUTPUT"
+            else
+                echo "staging_exists=false" >> "$GITHUB_OUTPUT"
+            fi
+      - name: Promote staging to packages
+        id: promote
+        if: steps.check_staging.outputs.staging_exists == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+            echo "Promoting packages-staging to packages..."
+            
+            # Clone packages branch
+            work="$(mktemp -d)"
+            git clone --branch packages --single-branch --depth 1 "https://github.com/${GH_REPO}.git" "$work"
+            cd "$work"
+            
+            # Fetch and merge packages-staging
+            git fetch origin packages-staging:packages-staging
+            git merge --no-edit packages-staging || {
+                echo "Merge conflict - manual intervention needed"
+                exit 1
+            }
+            
+            # Rebuild repo database
+            repo-add --quiet prince.db.tar.gz ./*.pkg.tar.zst
+            rm -f prince.db prince.files
+            cp -f prince.db.tar.gz prince.db
+            cp -f prince.files.tar.gz prince.files
+            
+            # Commit and push
+            git -c user.name="github-actions[bot]" \
+                -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+                commit -am "Promote packages-staging → packages [skip ci]"
+            
+            AUTH="$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)"
+            git -c "http.extraHeader=Authorization: Basic $AUTH" \
+                push origin "HEAD:refs/heads/packages"
+            
+            echo "promoted=true" >> "$GITHUB_OUTPUT"
+
   check:
+    needs: promote-staging
     runs-on: ubuntu-latest
     outputs:
       has_changes: ${{ steps.check.outputs.has_changes }}
@@ -51,7 +106,7 @@ jobs:
         run: bash github-ci/scripts/check_upstream.sh
 
   build:
-    needs: check
+    needs: [check, promote-staging]
     if: needs.check.outputs.has_changes == 'true'
     runs-on: ubuntu-latest
     container:

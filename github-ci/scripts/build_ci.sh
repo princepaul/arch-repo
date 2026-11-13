@@ -62,12 +62,12 @@ publish_package() {
     stage_dir="$(mktemp -d)"
     cp -p "$pkg_file" "$stage_dir/"
 
-    # Call publish_repo.sh on the staging directory
+    # Call publish_repo.sh on the staging directory (packages-staging branch)
     # It will clone the packages branch, replace superseded versions, rebuild db, push
     if ! DIST_DIR="$stage_dir" \
          GH_TOKEN="${GH_TOKEN:-}" \
          GH_REPO="${GH_REPO:-}" \
-         bash github-ci/scripts/publish_repo.sh --no-push; then
+         PACKAGES_BRANCH=packages-staging bash github-ci/scripts/publish_repo.sh --no-push; then
         echo "ERROR: publish_repo.sh failed for $(basename "$pkg_file")" >&2
         rm -rf "$stage_dir"
         return 1
