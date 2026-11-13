@@ -55,7 +55,7 @@ publish_package() {
     local pkg_file="$1"
     local dir="$2"
 
-    echo "Publishing package: $(basename "$pkg_file")"
+    echo "Publishing package (no push): $(basename "$pkg_file")"
 
     # Create a single-package staging directory
     local stage_dir
@@ -67,14 +67,14 @@ publish_package() {
     if ! DIST_DIR="$stage_dir" \
          GH_TOKEN="${GH_TOKEN:-}" \
          GH_REPO="${GH_REPO:-}" \
-         bash github-ci/scripts/publish_repo.sh; then
+         bash github-ci/scripts/publish_repo.sh --no-push; then
         echo "ERROR: publish_repo.sh failed for $(basename "$pkg_file")" >&2
         rm -rf "$stage_dir"
         return 1
     fi
 
     rm -rf "$stage_dir"
-    echo "Published successfully: $(basename "$pkg_file")"
+    echo "Published locally: $(basename "$pkg_file")"
     return 0
 }
 
