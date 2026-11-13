@@ -47,6 +47,16 @@ get_head_ref() {
     git ls-remote "$url" HEAD 2>/dev/null | awk '{print $1}' | head -n1
 }
 
+# Latest tag commit hash (for release-based packages).
+# Expects tags like v1.2.3, v2026.45, etc. Returns the commit the tag points to.
+get_latest_tag_ref() {
+    local url="$1"
+    git ls-remote --tags "$url" 2>/dev/null \
+        | awk '/refs\/tags\/v?[0-9]/ {print $1}' \
+        | sort -V \
+        | tail -n1
+}
+
 # Last ref recorded for a package (empty if never built).
 get_stored_ref() {
     local dir="$1"

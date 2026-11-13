@@ -61,6 +61,12 @@ if [[ -n "$_paths" ]]; then
     done <<< "$_paths"
 fi
 
+# Detect if a package uses tag-based releases (source URL contains tag pattern)
+# Currently only opencadstudio-bin uses release tags; others are git HEAD packages.
+is_tag_based() {
+    [[ "$1" == "opencadstudio-bin" ]]
+}
+
 changed=()
 declared_ref=""
 for dir in "${all_pkgs[@]}"; do
@@ -70,7 +76,12 @@ for dir in "${all_pkgs[@]}"; do
         echo "Warning: could not determine upstream URL for $dir" >&2
         continue
     fi
-    declared_ref="$(get_head_ref "$url")"
+    # Use tag-based ref for release packages, HEAD for git packages
+    if is_tag_based "$dir"; then
+        declared_ref="$(get_latest_tag_ref "$url")"
+    else
+        declared_ref="$(get_head_ref "$url")"
+    fi
     [[ -n "$declared_ref" ]] || { echo "Warning: git ls-remote failed for $dir ($url)" >&2; continue; }
 
     stored="$(get_stored_ref "$dir")"
