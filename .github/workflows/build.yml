@@ -223,23 +223,28 @@ jobs:
             WS="${GITHUB_WORKSPACE}"
             cd "$WS"
             
-            # Find changed .upstream files
-            shopt -s nullglob
-            changed_files=()
-            for f in .upstream/*; do
-                [[ -f "$f" ]] && changed_files+=("$f")
-            done
-            shopt -u nullglob
-            
-            if [[ ${#changed_files[@]} -eq 0 ]]; then
-                echo "No upstream ref changes to commit."
+            # Read list of actually built packages
+            built_file="${GITHUB_WORKSPACE}/dist/.built_dirs"
+            if [[ ! -f "$built_file" ]]; then
+                echo "No built packages tracked; skipping ref update."
                 exit 0
             fi
             
-            echo "Updating ${#changed_files[@]} upstream refs via GitHub API..."
+            mapfile -t built_dirs < "$built_file"
+            if [[ ${#built_dirs[@]} -eq 0 ]]; then
+                echo "No packages built; skipping ref update."
+                exit 0
+            fi
             
-            for f in "${changed_files[@]}"; do
-                filename="$(basename "$f")"
+            echo "Updating ${#built_dirs[@]} upstream refs via GitHub API for built packages..."
+            
+            for dir in "${built_dirs[@]}"; do
+                filename="${dir//\//_}"
+                f=".upstream/${filename}"
+                if [[ ! -f "$f" ]]; then
+                    echo "  Warning: ref file $f not found, skipping"
+                    continue
+                fi
                 content="$(cat "$f")"
                 encoded="$(printf '%s' "$content" | base64 -w0)"
                 
@@ -248,20 +253,11 @@ jobs:
                 
                 if [[ -n "$sha" ]]; then
                     # Update existing file
-                    gh api -X PUT "repos/${GH_REPO}/contents/.upstream/${filename}" \
-                        -f message="chore: update upstream ref for ${filename} [skip ci]" \
-                        -f content="$encoded" \
-                        -f sha="$sha" \
-                        -f branch=main \
-                        >/dev/null
+                    gh api -X PUT "repos/${GH_REPO}/contents/.upstream/${filename}"                         -f message="chore: update upstream ref for ${filename} [skip ci]"                         -f content="$encoded"                         -f sha="$sha"                         -f branch=main                         >/dev/null
                     echo "  Updated: ${filename}"
                 else
                     # Create new file
-                    gh api -X PUT "repos/${GH_REPO}/contents/.upstream/${filename}" \
-                        -f message="chore: add upstream ref for ${filename} [skip ci]" \
-                        -f content="$encoded" \
-                        -f branch=main \
-                        >/dev/null
+                    gh api -X PUT "repos/${GH_REPO}/contents/.upstream/${filename}"                         -f message="chore: add upstream ref for ${filename} [skip ci]"                         -f content="$encoded"                         -f branch=main                         >/dev/null
                     echo "  Created: ${filename}"
                 fi
             done
