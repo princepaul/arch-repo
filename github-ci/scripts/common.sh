@@ -57,6 +57,12 @@ get_latest_tag_ref() {
         | tail -n1
 }
 
+# Detect if a package uses tag-based releases (source URL contains tag pattern).
+# Currently only opencadstudio-bin uses release tags; others are git HEAD packages.
+is_tag_based() {
+    [[ "$1" == "opencadstudio-bin" ]]
+}
+
 # Last ref recorded for a package (empty if never built).
 get_stored_ref() {
     local dir="$1"

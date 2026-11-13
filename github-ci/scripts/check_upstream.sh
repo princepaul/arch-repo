@@ -61,11 +61,7 @@ if [[ -n "$_paths" ]]; then
     done <<< "$_paths"
 fi
 
-# Detect if a package uses tag-based releases (source URL contains tag pattern)
-# Currently only opencadstudio-bin uses release tags; others are git HEAD packages.
-is_tag_based() {
-    [[ "$1" == "opencadstudio-bin" ]]
-}
+
 
 changed=()
 declared_ref=""

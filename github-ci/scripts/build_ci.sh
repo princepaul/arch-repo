@@ -143,7 +143,12 @@ process_directory() {
     # Record upstream ref only after successful build AND publish
     local url ref
     url="$(get_pkg_url "$dir")"
-    ref="$(get_head_ref "$url")"
+    # Use same ref detection as check_upstream.sh
+    if is_tag_based "$dir"; then
+        ref="$(get_latest_tag_ref "$url")"
+    else
+        ref="$(get_head_ref "$url")"
+    fi
     if [[ -n "$ref" ]]; then
         store_ref "$dir" "$ref"
     fi
