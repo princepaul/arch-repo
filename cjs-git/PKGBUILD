@@ -25,6 +25,7 @@ makedepends=(
   dbus
   git
   glib2
+  glib2-docs
   gobject-introspection
   meson
 )
@@ -45,6 +46,8 @@ pkgver() {
 }
 
 build() {
+  # Ensure glib2 tools are available
+  pacman -Sy --noconfirm glib2
   rm -rf build
   arch-meson $pkgname build \
     -D installed_tests=false
