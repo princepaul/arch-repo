@@ -25,7 +25,6 @@ makedepends=(
   dbus
   git
   glib2
-  glib2-docs
   gobject-introspection
   meson
 )
@@ -33,7 +32,7 @@ checkdepends=(
   gtk3
   xorg-server-xvfb
 )
-source=(git+${url}.git)
+source=("git+https://github.com/linuxmint/cjs.git#tag=master.lmde7")
 b2sums=('SKIP')
 options=(
   '!debug'
@@ -46,8 +45,6 @@ pkgver() {
 }
 
 build() {
-  # Ensure glib2 tools are available
-  pacman -Sy --noconfirm glib2
   rm -rf build
   arch-meson $pkgname build \
     -D installed_tests=false
@@ -65,4 +62,3 @@ package() {
   # cjs doesn't properly disable installs from gobject-introspection-tests
   rm -r "$pkgdir/usr/lib/installed-tests"
 }
-
