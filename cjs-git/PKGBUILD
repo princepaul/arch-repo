@@ -45,6 +45,7 @@ pkgver() {
 }
 
 build() {
+  rm -rf build
   arch-meson $pkgname build \
     -D installed_tests=false
   meson compile -C build
