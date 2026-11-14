@@ -217,7 +217,6 @@ jobs:
 
       - name: Update .upstream refs via GitHub API
         if: always()
-        needs: build
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
