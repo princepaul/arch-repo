@@ -302,7 +302,7 @@ jobs:
 
             # Clean up build-packages runs
             mapfile -t build_run_ids < <(gh api "repos/${GH_REPO}/actions/runs?per_page=100"  \
-                --jq '.workflow_runs[] | select(.workflow_id == 396611019) | sort_by(.created_at) | reverse | .id')
+                --jq '[.workflow_runs[] | select(.workflow_id == 396611019)] | sort_by(.created_at) | reverse | .[].id')
 
             # Keep only the current run (which is the latest successful), delete all others
             deleted=0
@@ -318,7 +318,7 @@ jobs:
 
             # Clean up pages-build-deployment runs (keep only latest)
             mapfile -t pages_run_ids < <(gh api "repos/${GH_REPO}/actions/runs?per_page=100"  \
-                --jq '.workflow_runs[] | select(.workflow_name == "pages-build-deployment") | sort_by(.created_at) | reverse | .id')
+                --jq '[.workflow_runs[] | select(.workflow_id == 397319052)] | sort_by(.created_at) | reverse | .[].id')
 
             if [[ ${#pages_run_ids[@]} -gt 0 ]]; then
                 latest_pages="${pages_run_ids[0]}"
@@ -327,7 +327,7 @@ jobs:
                     echo "  Delete: $rid (pages-build-deployment)"
                     gh api -X DELETE "repos/${GH_REPO}/actions/runs/$rid" >/dev/null 2>&1 || true
                     deleted=$((deleted + 1))
-                fi
+                done
             fi
 
             echo "Deleted $deleted old run(s)."
