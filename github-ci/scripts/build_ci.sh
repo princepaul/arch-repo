@@ -198,7 +198,6 @@ if [[ ${#built_dirs[@]} -gt 0 ]]; then
 fi
 
 if [[ ${#failures[@]} -gt 0 ]]; then
-if [[ ${#failures[@]} -gt 0 ]]; then
     echo "The following packages failed: ${failures[*]}" >&2
     exit 1
 fi
@@ -212,4 +211,4 @@ if [[ ${#built_pkgs[@]} -eq 0 ]]; then
     echo "Nothing was built."
 fi
 
-    echo "CI build script finished. Artifacts in $DIST_DIR"
+echo "CI build script finished. Artifacts in $DIST_DIR"
