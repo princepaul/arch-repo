@@ -172,7 +172,8 @@ jobs:
             fi
 
 
-      - name: Build changed packages + dependents
+      - id: build
+        name: Build changed packages + dependents
         env:
           PKGS: ${{ needs.check.outputs.packages }}
           GH_TOKEN: ${{ github.token }}
@@ -216,6 +217,7 @@ jobs:
 
       - name: Update .upstream refs via GitHub API
         if: always()
+        needs: build
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
@@ -223,14 +225,15 @@ jobs:
             WS="${GITHUB_WORKSPACE}"
             cd "$WS"
             
-            # Read list of actually built packages
-            built_file="${GITHUB_WORKSPACE}/dist/.built_dirs"
-            if [[ ! -f "$built_file" ]]; then
+            # Read list of actually built packages from build step output
+            built_dirs_str="${{ steps.build.outputs.built_dirs }}"
+            if [[ -z "$built_dirs_str" ]]; then
                 echo "No built packages tracked; skipping ref update."
                 exit 0
             fi
             
-            mapfile -t built_dirs < "$built_file"
+            # Split the string into array (space-separated)
+            read -ra built_dirs <<< "$built_dirs_str"
             if [[ ${#built_dirs[@]} -eq 0 ]]; then
                 echo "No packages built; skipping ref update."
                 exit 0

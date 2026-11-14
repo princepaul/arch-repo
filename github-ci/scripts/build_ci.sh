@@ -191,8 +191,13 @@ fi
 # Write built directories to file for API step (before exit, so partial builds are tracked)
 if [[ ${#built_dirs[@]} -gt 0 ]]; then
     printf '%s\n' "${built_dirs[@]}" > "$DIST_DIR/.built_dirs"
+    # Also write to workspace root for the API step on the runner
+    printf '%s\n' "${built_dirs[@]}" > "${GITHUB_WORKSPACE}/.built_dirs"
+    # Output to GITHUB_OUTPUT for the API step
+    echo "built_dirs=${built_dirs[*]}" >> "$GITHUB_OUTPUT"
 fi
 
+if [[ ${#failures[@]} -gt 0 ]]; then
 if [[ ${#failures[@]} -gt 0 ]]; then
     echo "The following packages failed: ${failures[*]}" >&2
     exit 1
