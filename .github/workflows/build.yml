@@ -285,6 +285,8 @@ jobs:
     needs: build
     if: always()
     runs-on: ubuntu-latest
+    permissions:
+      actions: write
     steps:
       - name: Delete runs older than the latest successful build
         env:
@@ -312,7 +314,7 @@ jobs:
                     continue
                 fi
                 echo "  Delete: $rid (build-packages)"
-                gh api -X DELETE "repos/${GH_REPO}/actions/runs/$rid" >/dev/null 2>&1 || true
+                gh api -X DELETE "repos/${GH_REPO}/actions/runs/$rid" >/dev/null || true
                 deleted=$((deleted + 1))
             done
 
@@ -325,7 +327,7 @@ jobs:
                 echo "  Keeping latest pages-build-deployment: $latest_pages"
                 for rid in "${pages_run_ids[@]:1}"; do
                     echo "  Delete: $rid (pages-build-deployment)"
-                    gh api -X DELETE "repos/${GH_REPO}/actions/runs/$rid" >/dev/null 2>&1 || true
+                    gh api -X DELETE "repos/${GH_REPO}/actions/runs/$rid" >/dev/null || true
                     deleted=$((deleted + 1))
                 done
             fi
