@@ -44,6 +44,15 @@ pkgver() {
 }
 
 build() {
+  # Find glib-mkenums and set environment variable if needed
+  if command -v glib-mkenums >/dev/null 2>&1; then
+    export GLIB_MKENUMS=$(command -v glib-mkenums)
+  elif [[ -f /usr/bin/glib-mkenums ]]; then
+    export GLIB_MKENUMS=/usr/bin/glib-mkenums
+  elif [[ -f /usr/lib/glib-2.0/glib-mkenums ]]; then
+    export GLIB_MKENUMS=/usr/lib/glib-2.0/glib-mkenums
+  fi
+  
   arch-meson $pkgname build \
     -D installed_tests=false
   meson compile -C build

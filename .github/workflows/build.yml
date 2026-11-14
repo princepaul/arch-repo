@@ -129,8 +129,10 @@ jobs:
             } > /tmp/pacman.conf.new
             mv /tmp/pacman.conf.new /etc/pacman.conf
             pacman -Syu --noconfirm git sudo github-cli zstd
-            # Install glib2 for glib-mkenums tool needed by cjs and other packages
+            # Install glib2 and its development tools for glib-mkenums
             pacman -S --noconfirm --needed glib2
+            # Also install the tools explicitly if available
+            pacman -S --noconfirm --needed glib2-docs 2>/dev/null || true
             # Install all [prince] packages so makepkg --syncdeps finds them
             pacman -S --noconfirm --needed $(pacman -Slq prince 2>/dev/null) 2>/dev/null || true
             useradd -m builder
