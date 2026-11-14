@@ -180,7 +180,13 @@ jobs:
           PKGS: ${{ needs.check.outputs.packages }}
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-        run: sudo -u builder -H env PKGS="$PKGS" GH_TOKEN="$GH_TOKEN" GH_REPO="$GH_REPO" bash github-ci/scripts/build_ci.sh
+        run: |
+          sudo -u builder -H env PKGS="$PKGS" GH_TOKEN="$GH_TOKEN" GH_REPO="$GH_REPO" bash github-ci/scripts/build_ci.sh
+          if [[ -f .built_dirs ]]; then
+            echo "built_dirs=$(tr '\n' ' ' < .built_dirs | xargs)" >> "$GITHUB_OUTPUT"
+          elif [[ -f dist/.built_dirs ]]; then
+            echo "built_dirs=$(tr '\n' ' ' < dist/.built_dirs | xargs)" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Upload artifacts (also kept as run artifacts)
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
@@ -226,8 +232,14 @@ jobs:
             WS="${GITHUB_WORKSPACE}"
             cd "$WS"
             
-            # Read list of actually built packages from build step output
+            # Read list of actually built packages from build step output or file
             built_dirs_str="${{ steps.build.outputs.built_dirs }}"
+            if [[ -z "$built_dirs_str" && -f .built_dirs ]]; then
+                built_dirs_str="$(tr '\n' ' ' < .built_dirs | xargs)"
+            fi
+            if [[ -z "$built_dirs_str" && -f dist/.built_dirs ]]; then
+                built_dirs_str="$(tr '\n' ' ' < dist/.built_dirs | xargs)"
+            fi
             if [[ -z "$built_dirs_str" ]]; then
                 echo "No built packages tracked; skipping ref update."
                 exit 0

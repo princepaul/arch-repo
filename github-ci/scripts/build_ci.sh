@@ -192,9 +192,11 @@ fi
 if [[ ${#built_dirs[@]} -gt 0 ]]; then
     printf '%s\n' "${built_dirs[@]}" > "$DIST_DIR/.built_dirs"
     # Also write to workspace root for the API step on the runner
-    printf '%s\n' "${built_dirs[@]}" > "${GITHUB_WORKSPACE}/.built_dirs"
-    # Output to GITHUB_OUTPUT for the API step
-    echo "built_dirs=${built_dirs[*]}" >> "$GITHUB_OUTPUT"
+    printf '%s\n' "${built_dirs[@]}" > "${GITHUB_WORKSPACE:-$PWD}/.built_dirs"
+    # Output to GITHUB_OUTPUT for the API step if available and writable
+    if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
+        echo "built_dirs=${built_dirs[*]}" >> "$GITHUB_OUTPUT" 2>/dev/null || true
+    fi
 fi
 
 if [[ ${#failures[@]} -gt 0 ]]; then
