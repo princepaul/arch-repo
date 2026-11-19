@@ -120,6 +120,8 @@ jobs:
             # Configure [prince] repo so previously-published packages are available
             # as installed dependencies for incremental builds (avoids full rebuilds)
             # Put [prince] FIRST so pacman prefers our packages over official repos
+            # Enable testing repository for newer libjxl (0.13)
+            sed -i '/^#\(testing\)/,/^Include/ s/^#//' /etc/pacman.conf
             {
                 echo "[prince]"
                 echo "SigLevel = Never"
