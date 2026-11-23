@@ -65,6 +65,7 @@ fi
 
 changed=()
 declared_ref=""
+declare -A changed_commits=()
 for dir in "${all_pkgs[@]}"; do
     [[ -f "$dir/PKGBUILD" ]] || { echo "Warning: $dir in build-order has no PKGBUILD, skipping" >&2; continue; }
     url="$(get_pkg_url "$dir")"
@@ -83,6 +84,8 @@ for dir in "${all_pkgs[@]}"; do
     stored="$(get_stored_ref "$dir")"
     if [[ -z "$stored" || "$stored" != "$declared_ref" ]]; then
         changed+=("$dir")
+        # Store commit info for summary
+        changed_commits["$dir"]="${stored:-<none>} -> ${declared_ref}"
     fi
 done
 
@@ -156,7 +159,14 @@ if [[ -n "${GITHUB_STEP_SUMMARY:-}" ]]; then
             echo "- No upstream repositories changed."
         else
             echo "- Upstream changed:"
-            for c in "${changed[@]}"; do echo "  - \`$c\`"; done
+            for c in "${changed[@]}"; do
+                commit_info="${changed_commits[$c]:-}"
+                if [[ -n "$commit_info" ]]; then
+                    echo "  - \`$c\`: \`$commit_info\`"
+                else
+                    echo "  - \`$c\`"
+                fi
+            done
         fi
         if [[ ${#local_changed_dirs[@]} -gt 0 ]]; then
             echo "- Local push changed:"
